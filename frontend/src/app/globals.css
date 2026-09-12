@@ -1,26 +1,59 @@
-@import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Paleta Normal (marca) */
+[data-palette="normal"] {
+  --color-accent: #EB0029;
+  --color-accent-text: #FFFFFF;
+  --color-accent-dark: #4A0E17;
+  --color-accent-soft: #E5B8BB;
+  --color-safe: #006978;
+  --color-surface: #F8F9FA;
+  --color-surface-2: #EFF1F2;
+  --color-text: #1E2229;
+  --color-text-muted: #5A6169;
+  --color-border: #D8DBDD;
+  --color-success-bg: #006978;
+  --color-success-text: #FFFFFF;
+  --color-danger-bg: #EB0029;
+  --color-danger-text: #FFFFFF;
+  --color-warning-bg: #E5B8BB;
+  --color-warning-text: #1E2229;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Paleta Daltónica (accesible) */
+[data-palette="colorblind"] {
+  --color-accent: #006978;
+  --color-accent-text: #FFFFFF;
+  --color-accent-dark: #4A0E17;
+  --color-accent-soft: #B8DEE2;
+  --color-safe: #006978;
+  --color-surface: #F8F9FA;
+  --color-surface-2: #EFF1F2;
+  --color-text: #1E2229;
+  --color-text-muted: #5A6169;
+  --color-border: #D8DBDD;
+  --color-success-bg: #006978;
+  --color-success-text: #FFFFFF;
+  --color-danger-bg: #EB0029;
+  --color-danger-text: #FFFFFF;
+  --color-warning-bg: #4A0E17;
+  --color-warning-text: #FFFFFF;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Paleta Monocromática (también funciona como modo oscuro) */
+[data-palette="mono"] {
+  --color-accent: #00CCCC;
+  --color-accent-text: #1E2229;
+  --color-accent-dark: #009999;
+  --color-accent-soft: #4D4D4D;
+  --color-safe: #00CCCC;
+  --color-surface: #1E2229;
+  --color-surface-2: #2A2F36;
+  --color-text: #F8F9FA;
+  --color-text-muted: #A0A6AC;
+  --color-border: #3A3F46;
+  --color-success-bg: #00CCCC;
+  --color-success-text: #1E2229;
+  --color-danger-bg: #4D4D4D;
+  --color-danger-text: #F8F9FA;
+  --color-warning-bg: #7A7A7A;
+  --color-warning-text: #1E2229;
 }

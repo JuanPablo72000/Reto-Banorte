@@ -29,7 +29,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
                     id={selectId}
                     aria-invalid={!!error || undefined}
                     aria-describedby={errorId}
-                    defaultValue={props.defaultValue ?? ""}
+                    defaultValue={props.value === undefined ? (props.defaultValue ?? "") : undefined}
                     className={[
                         "min-h-[44px] rounded-md border bg-[var(--color-surface)] px-3 py-2 text-[var(--color-text)]",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]",
