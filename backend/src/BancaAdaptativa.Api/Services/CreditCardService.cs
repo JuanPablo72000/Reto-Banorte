@@ -8,9 +8,9 @@ namespace BancaAdaptativa.Api.Services;
 public interface ICreditCardService
 {
     Task<CreditCardResponse> CreateAsync(int idUser, CreateCreditCardRequest req, CancellationToken ct = default);
-    Task<IReadOnlyList<CreditCardResponse>> ListAsync(int idUser, CancellationToken ct = default);
+    Task<IReadOnlyList<CreditCardResponse>> ListAsync(int idUser, string? status = null, CancellationToken ct = default);
     Task<CreditCardStatementResponse> GenerateStatementAsync(int idUser, int cardId, int year, int month, decimal totalPurchases, decimal totalPayments, CancellationToken ct = default);
-    Task<IReadOnlyList<CreditCardStatementResponse>> StatementsAsync(int idUser, int cardId, CancellationToken ct = default);
+    Task<IReadOnlyList<CreditCardStatementResponse>> StatementsAsync(int idUser, int cardId, int? year = null, int? month = null, CancellationToken ct = default);
     Task<CreditCardResponse> PayAsync(int idUser, int cardId, decimal amount, CancellationToken ct = default);
 }
 
@@ -53,13 +53,16 @@ public class CreditCardService(AppDbContext db, TimeProvider timeProvider) : ICr
         return Map(c);
     }
 
-    public async Task<IReadOnlyList<CreditCardResponse>> ListAsync(int idUser, CancellationToken ct = default) =>
-        await db.CreditCards.AsNoTracking().Where(c => c.IdUser == idUser)
-            .OrderBy(c => c.IdCreditCard)
+    public async Task<IReadOnlyList<CreditCardResponse>> ListAsync(int idUser, string? status = null, CancellationToken ct = default)
+    {
+        var q = db.CreditCards.AsNoTracking().Where(c => c.IdUser == idUser);
+        if (!string.IsNullOrWhiteSpace(status)) q = q.Where(c => c.Status == status);
+        return await q.OrderBy(c => c.IdCreditCard)
             .Select(c => new CreditCardResponse(c.IdCreditCard, c.CardNumberMasked, c.CardType,
                 c.CreditLimit, c.AvailableCredit, c.InterestRate,
                 c.StatementCutOffDay, c.PaymentDueDay, c.Status, c.CreatedAt))
             .ToListAsync(ct);
+    }
 
     public async Task<CreditCardStatementResponse> GenerateStatementAsync(int idUser, int cardId, int year, int month, decimal totalPurchases, decimal totalPayments, CancellationToken ct = default)
     {
@@ -135,13 +138,15 @@ public class CreditCardService(AppDbContext db, TimeProvider timeProvider) : ICr
         return MapStmt(ccs, start, end);
     }
 
-    public async Task<IReadOnlyList<CreditCardStatementResponse>> StatementsAsync(int idUser, int cardId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<CreditCardStatementResponse>> StatementsAsync(int idUser, int cardId, int? year = null, int? month = null, CancellationToken ct = default)
     {
         await RequireCardAsync(idUser, cardId, ct);
-        return await db.CreditCardStatements.AsNoTracking()
+        var q = db.CreditCardStatements.AsNoTracking()
             .Include(s => s.Statement)
-            .Where(s => s.IdCreditCard == cardId)
-            .OrderByDescending(s => s.Statement.PeriodEnd)
+            .Where(s => s.IdCreditCard == cardId);
+        if (year.HasValue) q = q.Where(s => s.Statement.PeriodEnd.Year == year.Value);
+        if (month.HasValue) q = q.Where(s => s.Statement.PeriodEnd.Month == month.Value);
+        return await q.OrderByDescending(s => s.Statement.PeriodEnd)
             .Select(s => new CreditCardStatementResponse(s.IdCreditCardStatement, s.IdCreditCard, s.IdStatement,
                 s.Statement.PeriodStart, s.Statement.PeriodEnd, s.PreviousBalance, s.TotalPayments,
                 s.TotalCredits, s.TotalPurchases, s.InterestCharges, s.MinimumPayment,

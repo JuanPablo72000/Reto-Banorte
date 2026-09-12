@@ -14,13 +14,21 @@ public static class AuthEndpoints
             try { return Results.Created("/users/me", await auth.RegisterAsync(req, ct)); }
             catch (InvalidOperationException ex) when (ex.Message == "EMAIL_TAKEN")
             { return Results.Conflict(new { error = "EMAIL_TAKEN" }); }
-        });
+        })
+            .WithName("register")
+            .WithSummary("Registra un usuario")
+            .Produces<AuthResponse>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status409Conflict);
 
         g.MapPost("/login", async (LoginRequest req, IAuthService auth, CancellationToken ct) =>
         {
             try { return Results.Ok(await auth.LoginAsync(req, ct)); }
             catch (UnauthorizedAccessException)
             { return Results.Unauthorized(); }
-        });
+        })
+            .WithName("login")
+            .WithSummary("Inicia sesión y obtiene un token JWT")
+            .Produces<AuthResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized);
     }
 }

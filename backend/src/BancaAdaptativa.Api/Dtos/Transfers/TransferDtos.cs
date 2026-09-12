@@ -14,8 +14,10 @@ public record CreateTransferRequest(
 public record TransferResponse(
     int IdTransfer, int IdOriginAccount, string DestinationAlias, string DestinationMasked,
     decimal Amount, string Currency, string Concept, string Status,
-    string IdempotencyKey, DateTime? ConfirmedAt);
+    string IdempotencyKey, DateTime CreatedAt, DateTime? ConfirmedAt);
 
 public record ConfirmTransferRequest([MaxLength(30)] string Method = "app");
 
 public record TransferConfirmationResponse(int IdConfirmation, string Method, string Status, DateTime? ConfirmedAt);
+
+public record ConfirmTransferResponse(TransferResponse Transfer, TransferConfirmationResponse Confirmation);

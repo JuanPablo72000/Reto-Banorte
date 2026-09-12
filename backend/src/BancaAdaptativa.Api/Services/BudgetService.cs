@@ -8,7 +8,7 @@ namespace BancaAdaptativa.Api.Services;
 public interface IBudgetService
 {
     Task<BudgetResponse> CreateOrUpdateAsync(int idUser, CreateBudgetRequest req, CancellationToken ct = default);
-    Task<BudgetMonthlySummaryResponse> MonthlySummaryAsync(int idUser, int year, int month, CancellationToken ct = default);
+    Task<BudgetMonthlySummaryResponse> MonthlySummaryAsync(int idUser, int year, int month, string? category = null, string? status = null, CancellationToken ct = default);
     Task SyncFromStatementAsync(int idUser, int statementId, CancellationToken ct = default);
     Task DeleteAsync(int idUser, int budgetId, CancellationToken ct = default);
 }
@@ -71,13 +71,14 @@ public class BudgetService(AppDbContext db, TimeProvider timeProvider) : IBudget
         return Map(b, cat.Name, cat.Code);
     }
 
-    public async Task<BudgetMonthlySummaryResponse> MonthlySummaryAsync(int idUser, int year, int month, CancellationToken ct = default)
+    public async Task<BudgetMonthlySummaryResponse> MonthlySummaryAsync(int idUser, int year, int month, string? category = null, string? status = null, CancellationToken ct = default)
     {
-        var list = await db.Budgets.AsNoTracking()
+        var q = db.Budgets.AsNoTracking()
             .Include(b => b.ExpenseCategory)
-            .Where(b => b.IdUser == idUser && b.Year == year && b.Month == month)
-            .OrderBy(b => b.ExpenseCategory.SortOrder)
-            .ToListAsync(ct);
+            .Where(b => b.IdUser == idUser && b.Year == year && b.Month == month);
+        if (!string.IsNullOrWhiteSpace(category)) q = q.Where(b => b.ExpenseCategory.Code == category);
+        if (!string.IsNullOrWhiteSpace(status)) q = q.Where(b => b.Status == status);
+        var list = await q.OrderBy(b => b.ExpenseCategory.SortOrder).ToListAsync(ct);
         var items = list.Select(b => Map(b, b.ExpenseCategory.Name, b.ExpenseCategory.Code)).ToList();
         return new(month, year, items.Sum(i => i.AmountLimit), items.Sum(i => i.CurrentSpent), items);
     }

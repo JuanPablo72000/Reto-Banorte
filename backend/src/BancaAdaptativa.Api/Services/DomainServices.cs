@@ -42,11 +42,13 @@ public class PreferenceService(AppDbContext db, TimeProvider timeProvider) : IPr
 
 public interface IAccountQueryService
 {
-    Task<IReadOnlyList<AccountResponse>> ListAsync(int idUser, CancellationToken ct = default);
+    Task<IReadOnlyList<AccountResponse>> ListAsync(int idUser, string? status = null, string? accountType = null, CancellationToken ct = default);
+    Task<AccountSummaryResponse> SummaryAsync(int idUser, CancellationToken ct = default);
     Task<AccountResponse> GetAsync(int idUser, int accountId, CancellationToken ct = default);
-    Task<IReadOnlyList<TransactionResponse>> TransactionsAsync(int idUser, int accountId, DateOnly? from, DateOnly? to, string? category, string? direction, string? status, string? search, int limit, CancellationToken ct = default);
+    Task<IReadOnlyList<TransactionResponse>> TransactionsAsync(int idUser, int accountId, DateOnly? from, DateOnly? to, string? category, string? direction, string? status, string? search, int limit, string? expenseCategory = null, CancellationToken ct = default);
+    Task<IReadOnlyList<TransactionResponse>> AllTransactionsAsync(int idUser, int? accountId, DateOnly? from, DateOnly? to, string? category, string? expenseCategory, string? direction, string? status, string? search, int limit, CancellationToken ct = default);
     Task<IReadOnlyList<DailyBalanceResponse>> BalancesAsync(int idUser, int accountId, DateOnly? from, DateOnly? to, CancellationToken ct = default);
-    Task<IReadOnlyList<ReconciliationResponse>> ReconciliationAsync(int idUser, CancellationToken ct = default);
+    Task<IReadOnlyList<ReconciliationResponse>> ReconciliationAsync(int idUser, string? status = null, CancellationToken ct = default);
 }
 
 public class AccountQueryService(AppDbContext db) : IAccountQueryService
@@ -57,10 +59,30 @@ public class AccountQueryService(AppDbContext db) : IAccountQueryService
         return a ?? throw new KeyNotFoundException("ACCOUNT_NOT_FOUND");
     }
 
-    public async Task<IReadOnlyList<AccountResponse>> ListAsync(int idUser, CancellationToken ct = default) =>
-        await db.Accounts.AsNoTracking().Where(a => a.IdUser == idUser).OrderBy(a => a.IdAccount)
+    public async Task<IReadOnlyList<AccountResponse>> ListAsync(int idUser, string? status = null, string? accountType = null, CancellationToken ct = default)
+    {
+        var q = db.Accounts.AsNoTracking().Where(a => a.IdUser == idUser);
+        if (!string.IsNullOrWhiteSpace(status)) q = q.Where(a => a.Status == status);
+        if (!string.IsNullOrWhiteSpace(accountType)) q = q.Where(a => a.AccountType == accountType);
+        return await q.OrderBy(a => a.IdAccount)
             .Select(a => new AccountResponse(a.IdAccount, a.AccountType, a.Alias, a.MaskedNumber, a.Currency, a.Balance, a.Status, a.CreatedAt))
             .ToListAsync(ct);
+    }
+
+    public async Task<AccountSummaryResponse> SummaryAsync(int idUser, CancellationToken ct = default)
+    {
+        var accounts = await db.Accounts.AsNoTracking()
+            .Where(a => a.IdUser == idUser)
+            .OrderBy(a => a.IdAccount)
+            .Select(a => new AccountResponse(a.IdAccount, a.AccountType, a.Alias, a.MaskedNumber,
+                a.Currency, a.Balance, a.Status, a.CreatedAt))
+            .ToListAsync(ct);
+
+        var currencies = accounts.Select(a => a.Currency).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var currency = currencies.Count == 1 ? currencies[0] : "MXN";
+        var totalBalance = accounts.Sum(a => a.Balance);
+        return new(totalBalance, currency, accounts);
+    }
 
     public async Task<AccountResponse> GetAsync(int idUser, int accountId, CancellationToken ct = default)
     {
@@ -68,19 +90,49 @@ public class AccountQueryService(AppDbContext db) : IAccountQueryService
         return new(a.IdAccount, a.AccountType, a.Alias, a.MaskedNumber, a.Currency, a.Balance, a.Status, a.CreatedAt);
     }
 
-    public async Task<IReadOnlyList<TransactionResponse>> TransactionsAsync(int idUser, int accountId, DateOnly? from, DateOnly? to, string? category, string? direction, string? status, string? search, int limit, CancellationToken ct = default)
+    private static IQueryable<Transaction> ApplyTransactionFilters(IQueryable<Transaction> q,
+        DateOnly? from, DateOnly? to, string? category, string? expenseCategory,
+        string? direction, string? status, string? search)
     {
-        await RequireAccountAsync(idUser, accountId, ct);
-        limit = Math.Clamp(limit, 1, 100);
-        var q = db.Transactions.AsNoTracking().Where(t => t.IdAccount == accountId);
         if (from.HasValue) q = q.Where(t => t.Date >= from.Value);
         if (to.HasValue) q = q.Where(t => t.Date <= to.Value);
         if (!string.IsNullOrWhiteSpace(category)) q = q.Where(t => t.Category == category);
+        if (!string.IsNullOrWhiteSpace(expenseCategory)) q = q.Where(t => t.ExpenseCategory != null && t.ExpenseCategory.Code == expenseCategory);
         if (!string.IsNullOrWhiteSpace(direction)) q = q.Where(t => t.Direction == direction);
         if (!string.IsNullOrWhiteSpace(status)) q = q.Where(t => t.Status == status);
         if (!string.IsNullOrWhiteSpace(search)) q = q.Where(t => t.Description.Contains(search) || t.Reference.Contains(search));
+        return q;
+    }
+
+    public async Task<IReadOnlyList<TransactionResponse>> TransactionsAsync(int idUser, int accountId, DateOnly? from, DateOnly? to, string? category, string? direction, string? status, string? search, int limit, string? expenseCategory = null, CancellationToken ct = default)
+    {
+        await RequireAccountAsync(idUser, accountId, ct);
+        limit = Math.Clamp(limit, 1, 100);
+        var q = ApplyTransactionFilters(
+            db.Transactions.AsNoTracking().Where(t => t.IdAccount == accountId),
+            from, to, category, expenseCategory, direction, status, search);
         return await q.OrderByDescending(t => t.Date).ThenByDescending(t => t.IdTransaction).Take(limit)
-            .Select(t => new TransactionResponse(t.IdTransaction, t.Date, t.Amount, t.Direction, t.Category, t.Description, t.Status, t.Reference, t.IdExpenseCategory))
+            .Select(t => new TransactionResponse(t.IdTransaction, t.IdAccount, t.Date, t.Amount, t.Direction, t.Category, t.Description, t.Status, t.Reference, t.IdExpenseCategory))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<TransactionResponse>> AllTransactionsAsync(int idUser, int? accountId, DateOnly? from, DateOnly? to, string? category, string? expenseCategory, string? direction, string? status, string? search, int limit, CancellationToken ct = default)
+    {
+        IQueryable<Transaction> q = db.Transactions.AsNoTracking();
+        if (accountId.HasValue)
+        {
+            await RequireAccountAsync(idUser, accountId.Value, ct);
+            q = q.Where(t => t.IdAccount == accountId.Value);
+        }
+        else
+        {
+            var mine = db.Accounts.AsNoTracking().Where(a => a.IdUser == idUser).Select(a => a.IdAccount);
+            q = q.Where(t => mine.Contains(t.IdAccount));
+        }
+        limit = Math.Clamp(limit, 1, 100);
+        q = ApplyTransactionFilters(q, from, to, category, expenseCategory, direction, status, search);
+        return await q.OrderByDescending(t => t.Date).ThenByDescending(t => t.IdTransaction).Take(limit)
+            .Select(t => new TransactionResponse(t.IdTransaction, t.IdAccount, t.Date, t.Amount, t.Direction, t.Category, t.Description, t.Status, t.Reference, t.IdExpenseCategory))
             .ToListAsync(ct);
     }
 
@@ -95,25 +147,28 @@ public class AccountQueryService(AppDbContext db) : IAccountQueryService
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<ReconciliationResponse>> ReconciliationAsync(int idUser, CancellationToken ct = default) =>
-        await db.ReconciliationMatches.AsNoTracking()
-            .Where(r => r.Transfer.IdUser == idUser)
-            .OrderByDescending(r => r.IdMatch)
+    public async Task<IReadOnlyList<ReconciliationResponse>> ReconciliationAsync(int idUser, string? status = null, CancellationToken ct = default)
+    {
+        var q = db.ReconciliationMatches.AsNoTracking().Where(r => r.Transfer.IdUser == idUser);
+        if (!string.IsNullOrWhiteSpace(status)) q = q.Where(r => r.Status == status);
+        return await q.OrderByDescending(r => r.IdMatch)
             .Select(r => new ReconciliationResponse(r.IdMatch, r.IdTransfer, r.IdTransaction, r.Status, r.MatchScore, r.MatchedAt, r.Notes))
             .ToListAsync(ct);
+    }
 }
 
 public interface ITransferService
 {
     Task<TransferResponse> CreateAsync(int idUser, CreateTransferRequest req, CancellationToken ct = default);
     Task<TransferResponse> GetAsync(int idUser, int transferId, CancellationToken ct = default);
+    Task<IReadOnlyList<TransferResponse>> ListAsync(int idUser, string? status = null, int? originAccountId = null, DateTime? from = null, DateTime? to = null, int limit = 50, CancellationToken ct = default);
     Task<(TransferResponse Transfer, TransferConfirmationResponse Confirmation)> ConfirmAsync(int idUser, int transferId, string method, CancellationToken ct = default);
 }
 
 public class TransferService(AppDbContext db, TimeProvider timeProvider) : ITransferService
 {
     private static TransferResponse Map(Transfer t) =>
-        new(t.IdTransfer, t.IdOriginAccount, t.DestinationAlias, t.DestinationMasked, t.Amount, t.Currency, t.Concept, t.Status, t.IdempotencyKey, t.ConfirmedAt);
+        new(t.IdTransfer, t.IdOriginAccount, t.DestinationAlias, t.DestinationMasked, t.Amount, t.Currency, t.Concept, t.Status, t.IdempotencyKey, t.CreatedAt, t.ConfirmedAt);
 
     public async Task<TransferResponse> CreateAsync(int idUser, CreateTransferRequest req, CancellationToken ct = default)
     {
@@ -135,6 +190,7 @@ public class TransferService(AppDbContext db, TimeProvider timeProvider) : ITran
             Concept = req.Concept ?? string.Empty,
             Status = "pending",
             IdempotencyKey = key,
+            CreatedAt = timeProvider.GetUtcNow().UtcDateTime,
             ConfirmedAt = null
         };
         db.Transfers.Add(t);
@@ -152,6 +208,20 @@ public class TransferService(AppDbContext db, TimeProvider timeProvider) : ITran
         var t = await db.Transfers.AsNoTracking().FirstOrDefaultAsync(x => x.IdTransfer == transferId && x.IdUser == idUser, ct)
             ?? throw new KeyNotFoundException("TRANSFER_NOT_FOUND");
         return Map(t);
+    }
+
+    public async Task<IReadOnlyList<TransferResponse>> ListAsync(int idUser, string? status = null, int? originAccountId = null, DateTime? from = null, DateTime? to = null, int limit = 50, CancellationToken ct = default)
+    {
+        limit = Math.Clamp(limit, 1, 100);
+        var q = db.Transfers.AsNoTracking().Where(t => t.IdUser == idUser);
+        if (!string.IsNullOrWhiteSpace(status)) q = q.Where(t => t.Status == status);
+        if (originAccountId.HasValue) q = q.Where(t => t.IdOriginAccount == originAccountId.Value);
+        if (from.HasValue) q = q.Where(t => t.CreatedAt >= from.Value);
+        if (to.HasValue) q = q.Where(t => t.CreatedAt <= to.Value);
+        var list = await q.OrderByDescending(t => t.CreatedAt).ThenByDescending(t => t.IdTransfer)
+            .Take(limit)
+            .ToListAsync(ct);
+        return list.Select(Map).ToList();
     }
 
     public async Task<(TransferResponse Transfer, TransferConfirmationResponse Confirmation)> ConfirmAsync(int idUser, int transferId, string method, CancellationToken ct = default)
