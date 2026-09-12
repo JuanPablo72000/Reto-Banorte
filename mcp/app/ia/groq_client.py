@@ -21,6 +21,7 @@ import asyncio
 import json
 import logging
 import os
+from datetime import datetime
 from typing import Optional
 
 import groq
@@ -259,19 +260,35 @@ REGLAS DE ACCESIBILIDAD BANORTE (OBLIGATORIO):
    needs_confirmation = true.
 
 4. IMPORTANTE — IDs REALES (enteros) de BancaAdaptativa.Api: "arguments" es
-   SIEMPRE un objeto con TODOS los campos (14 en "steps": id_user, id_account,
+   SIEMPRE un objeto con TODOS los campos (24 en "steps": id_user, id_account,
    id_origin_account, id_session, id_transfer, destination_alias,
    destination_masked, amount, currency, concept, query, date_from, date_to,
-   limit, method).
-   - Los IDs (id_user, id_account, id_origin_account, id_session, id_transfer)
-     son SIEMPRE integer o null. NUNCA inventes un ID: si no lo conoces, usa
-     null. NUNCA uses texto como "acc_123" o "__PLACEHOLDER__": esos IDs ya
-     no existen, la base de datos real usa enteros autoincrementales.
+   limit, method, status, account_type, category, expense_category,
+   direction, search, year, month, id_statement, id_credit_card).
+   - Los IDs (id_user, id_account, id_origin_account, id_session, id_transfer,
+     id_statement, id_credit_card) son SIEMPRE integer o null. NUNCA inventes
+     un ID: si no lo conoces, usa null. NUNCA uses texto como "acc_123" o
+     "__PLACEHOLDER__": esos IDs ya no existen, la base de datos real usa
+     enteros autoincrementales.
    - "amount" es number (usa 0 si no aplica), "currency" es string (usa
      "MXN" si no aplica), "limit" es integer (usa 20 si no aplica), "method"
      es string (usa "app" si no aplica).
    - Los campos de texto que no conozcas (destination_alias,
-     destination_masked, concept, query, date_from, date_to) van en null.
+     destination_masked, concept, query, date_from, date_to, status,
+     account_type, category, expense_category, direction, search) van en
+     null. Igual "year" y "month" (integer o null) si no aplican.
+   - "status" depende de la tool: 'active'/'blocked' (cuentas/tarjetas),
+     'pending'/'pending_confirmation'/'confirmed'/'failed' (transferencias),
+     'generated'/'archived' (estados de cuenta), 'active'/'exceeded'
+     (presupuestos), 'active'/'paused'/'completed' (metas de ahorro).
+   - "account_type" es 'debito' o 'credito' (filtro de get_accounts).
+   - "direction" es 'credit' o 'debit' (filtro de transacciones).
+   - "category"/"expense_category"/"search" son texto libre para filtrar
+     transacciones, presupuestos o categorías de gasto.
+   - "year"/"month" se usan para filtrar estados de cuenta (de cuenta o de
+     tarjeta) y presupuestos mensuales.
+   - "id_statement" se usa solo con get_statement_detail; "id_credit_card"
+     se usa con get_credit_cards/get_credit_card_statements.
    - En "suggested_actions", "arguments" SOLO acepta EXACTAMENTE estos 5
      campos: id_user, id_account, id_origin_account, query, limit (nada más).
      Los IDs y limit son integer o null; query es string o null.
@@ -684,7 +701,8 @@ RECUERDA:
 ✅ SIEMPRE genera 2-4 sugerencias contextuales
 ✅ SIEMPRE incluye consejos y recomendaciones de accesibilidad
 ✅ SIEMPRE proporciona mensajes en lenguaje simple
-✅ Los IDs (id_user, id_account, id_origin_account, id_session, id_transfer)
+✅ Los IDs (id_user, id_account, id_origin_account, id_session, id_transfer,
+   id_statement, id_credit_card)
    son SIEMPRE integer o null. NUNCA inventes un ID ni uses texto/placeholders.
 ✅ SIEMPRE elige "accessibility_template" del catálogo fijo (nunca inventes
    valores de accesibilidad sueltos, solo el id de la plantilla)
@@ -700,6 +718,11 @@ class GroqPlanner:
         # Si se fuerza un modelo explícito (compatibilidad con código viejo),
         # lo usamos SIEMPRE de primero y no aplicamos la heurística de tiers.
         self._modelo_forzado = model
+        # Último turno (para tests/diagnóstico, ver tests/test_repl_e2e.py):
+        # el JSON crudo del modelo ANTES de normalizar y el dict DESPUÉS.
+        self.last_raw: Optional[dict] = None
+        self.last_normalized: Optional[dict] = None
+        self.last_model: Optional[str] = None
 
     async def _llamar_gemini(self, modelo: str, mensaje_usuario: str) -> str:
         """Misma idea que la llamada a Groq (system+user -> JSON del
@@ -725,7 +748,16 @@ class GroqPlanner:
         context = context or {}
         logger.info("Generando plan Banorte Accessible (contexto keys=%s)", list(context.keys()))
 
+        # El modelo no sabe qué día es hoy: sin esto, "mes pasado" o "ayer"
+        # quedan en date_from/date_to = null (ver test_local.py caso 1) y la
+        # tool trae todo sin filtrar. Se inyecta la fecha real aquí para que
+        # la resuelva a rango concreto (ej. hoy 2026-09-12 + "mes pasado" ->
+        # date_from=2026-08-01, date_to=2026-08-31).
+        hoy = datetime.now().date().isoformat()
         mensaje_usuario = (
+            f"Fecha actual: {hoy} (úsala para resolver expresiones relativas "
+            f"de tiempo como 'mes pasado', 'ayer' o 'esta quincena' en "
+            f"date_from/date_to/year/month).\n"
             f"Contexto disponible (JSON): {json.dumps(context, ensure_ascii=False)}\n\n"
             f"Mensaje/intención del usuario: {user_message}"
         )
@@ -765,8 +797,13 @@ class GroqPlanner:
                         )
                         raw_content = response.choices[0].message.content
 
-                    datos_normalizados = normalizar_plan(json.loads(raw_content))
+                    datos_crudos = json.loads(raw_content)
+                    datos_normalizados = normalizar_plan(datos_crudos)
                     plan = ActionPlan.model_validate(datos_normalizados)
+
+                    self.last_raw = datos_crudos
+                    self.last_normalized = datos_normalizados
+                    self.last_model = modelo
 
                     logger.info(
                         "Plan Banorte Accessible generado con %s: intent=%r pasos=%d sugerencias=%d needs_confirmation=%s",

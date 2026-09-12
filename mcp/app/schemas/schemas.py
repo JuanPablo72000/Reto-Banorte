@@ -1,4 +1,4 @@
-"""
+""""
 Schemas compartidos — parte de Guillermo (MCP + modelo de IA).
 
 MIGRACIÓN A LA BASE DE DATOS REAL (Reto-Banorte / BancaAdaptativa.Api):
@@ -49,27 +49,62 @@ class ApiModel(BaseModel):
 
 # ---------------------------------------------------------------------------
 # Nombres de tools MCP
+#
+# Ampliado para reflejar los endpoints NUEVOS que Pablo agregó a
+# BancaAdaptativa.Api (estados de cuenta, presupuestos, metas de ahorro,
+# tarjetas de crédito, categorías de gasto, listado global de movimientos y
+# de transferencias). Todas son de SOLO LECTURA salvo prepare_transfer/
+# confirm_transfer: el catálogo IA de Pablo (docs/datos/06-catalogo-ia-
+# placeholders.md, sección 6.5) es explícito en que la IA "no escribe" salvo
+# confirmar una transferencia ya creada — crear presupuestos/tarjetas/metas
+# lo hace el usuario desde la UI, no la IA. Por eso NO hay
+# create_budget/pay_credit_card/etc. aquí, aunque esos endpoints POST/PUT/
+# DELETE sí existan en la API real.
 # ---------------------------------------------------------------------------
 TOOL_NAMES = [
     "get_user_context",
     "get_accounts",
+    "get_account_summary",
+    "get_account_detail",
     "get_transactions",
+    "get_all_transactions",
     "get_daily_balance",
     "search_memory_context",
     "prepare_transfer",
     "confirm_transfer",
+    "get_transfers",
+    "get_transfer_detail",
     "get_reconciliation_status",
+    "get_statements",
+    "get_statement_detail",
+    "get_expense_categories",
+    "get_budgets_monthly",
+    "get_savings_goals",
+    "get_credit_cards",
+    "get_credit_card_statements",
 ]
 
 ToolName = Literal[
     "get_user_context",
     "get_accounts",
+    "get_account_summary",
+    "get_account_detail",
     "get_transactions",
+    "get_all_transactions",
     "get_daily_balance",
     "search_memory_context",
     "prepare_transfer",
     "confirm_transfer",
+    "get_transfers",
+    "get_transfer_detail",
     "get_reconciliation_status",
+    "get_statements",
+    "get_statement_detail",
+    "get_expense_categories",
+    "get_budgets_monthly",
+    "get_savings_goals",
+    "get_credit_cards",
+    "get_credit_card_statements",
 ]
 
 
@@ -121,6 +156,13 @@ class IconType(str, Enum):
     SUCCESS = "success"
     INFO = "info"
     SETTINGS = "settings"
+    # Añadidos junto con los nuevos endpoints de Pablo (estados de cuenta,
+    # presupuestos, metas de ahorro, tarjetas de crédito, categorías).
+    STATEMENT = "statement"
+    BUDGET = "budget"
+    GOAL = "goal"
+    CARD = "card"
+    CATEGORY = "category"
 
 
 class ComponentVariant(str, Enum):
@@ -449,6 +491,241 @@ class ReconciliationMatch(ApiModel):
     )
 
 
+class AccountSummary(ApiModel):
+    """Espejo de Dtos/Accounts/AccountSummaryResponse
+    (GET /me/account-summary): saldo total + desglose por cuenta."""
+    total_balance: float
+    currency: str = "MXN"
+    accounts: list[Account] = Field(default_factory=list)
+    x_placeholder: bool = Field(default=False)
+    x_position: PositionMetadata = Field(
+        default_factory=lambda: PositionMetadata(
+            display_order=1,
+            section=Section.HEADER,
+            priority=Priority.HIGH,
+            visual=VisualMetadata(icon=IconType.BALANCE, variant=ComponentVariant.PRIMARY, emphasis="highlighted"),
+            accessibility=AccessibilityMetadata(
+                aria_label="Saldo total",
+                screen_reader_text="Saldo total de todas tus cuentas",
+                plain_language_text="Todo tu dinero junto",
+                tooltip="Ver el desglose por cuenta"
+            )
+        )
+    )
+
+
+class ExpenseCategory(ApiModel):
+    """Espejo de Dtos/Common/CommonDtos.cs -> ExpenseCategoryResponse
+    (GET /expense-categories)."""
+    id_category: int
+    name: str
+    code: str
+    icon: Optional[str] = None
+    is_default: bool = False
+    sort_order: int = 0
+    x_placeholder: bool = Field(default=False)
+    x_position: PositionMetadata = Field(
+        default_factory=lambda: PositionMetadata(
+            display_order=1,
+            section=Section.SIDEBAR,
+            priority=Priority.LOW,
+            visual=VisualMetadata(icon=IconType.CATEGORY, variant=ComponentVariant.GHOST),
+            accessibility=AccessibilityMetadata(
+                aria_label="Categoría de gasto",
+                screen_reader_text="Categoría usada para clasificar gastos",
+                plain_language_text="Tipo de gasto",
+                tooltip="Filtrar por esta categoría"
+            )
+        )
+    )
+
+
+class StatementExpenseBreakdown(ApiModel):
+    """Espejo de Dtos/Accounts/StatementDtos.cs -> StatementExpenseBreakdown
+    (parte de GET /accounts/{accountId}/statements/{statementId})."""
+    id_expense_category: int
+    category_name: str
+    category_code: str
+    amount: float
+    transaction_count: int = 0
+    first_transaction_date: Optional[date] = None
+    last_transaction_date: Optional[date] = None
+
+
+class Statement(ApiModel):
+    """Espejo de Dtos/Accounts/StatementDtos.cs -> StatementResponse
+    (GET /accounts/{accountId}/statements)."""
+    id_statement: int
+    id_account: int
+    cut_off_day: int
+    period_start: date
+    period_end: date
+    opening_balance: float
+    closing_balance: float
+    total_credits: float
+    total_debits: float
+    transaction_count: int = 0
+    account_type: Optional[str] = None
+    status: Literal["generated", "archived"] = "generated"
+    generated_at: datetime
+    x_placeholder: bool = Field(default=False)
+    x_position: PositionMetadata = Field(
+        default_factory=lambda: PositionMetadata(
+            display_order=1,
+            section=Section.MAIN,
+            priority=Priority.MEDIUM,
+            visual=VisualMetadata(icon=IconType.STATEMENT, variant=ComponentVariant.SECONDARY, tone=BadgeTone.INFO),
+            accessibility=AccessibilityMetadata(
+                aria_label="Estado de cuenta",
+                screen_reader_text="Estado de cuenta de un periodo",
+                plain_language_text="Resumen de un mes de tu cuenta",
+                tooltip="Ver el detalle de este estado de cuenta"
+            )
+        )
+    )
+
+
+class StatementDetail(ApiModel):
+    """Espejo de Dtos/Accounts/StatementDtos.cs -> StatementDetailResponse
+    (GET /accounts/{accountId}/statements/{statementId}): el estado de
+    cuenta + su desglose de gastos por categoría."""
+    statement: Statement
+    expenses: list[StatementExpenseBreakdown] = Field(default_factory=list)
+
+
+class Budget(ApiModel):
+    """Espejo de Dtos/Budgets/BudgetDtos.cs -> BudgetResponse."""
+    id_budget: int
+    id_expense_category: int
+    category_name: Optional[str] = None
+    category_code: Optional[str] = None
+    month: int
+    year: int
+    amount_limit: float
+    current_spent: float = 0.0
+    usage_percent: float = 0.0
+    status: Literal["active", "exceeded"] = "active"
+    x_placeholder: bool = Field(default=False)
+    x_position: PositionMetadata = Field(
+        default_factory=lambda: PositionMetadata(
+            display_order=1,
+            section=Section.MAIN,
+            priority=Priority.MEDIUM,
+            visual=VisualMetadata(icon=IconType.BUDGET, variant=ComponentVariant.SECONDARY, tone=BadgeTone.WARNING),
+            accessibility=AccessibilityMetadata(
+                aria_label="Presupuesto",
+                screen_reader_text="Presupuesto mensual de una categoría de gasto",
+                plain_language_text="Cuánto puedes gastar en esto este mes",
+                tooltip="Ver el detalle de este presupuesto"
+            )
+        )
+    )
+
+
+class BudgetMonthlySummary(ApiModel):
+    """Espejo de Dtos/Budgets/BudgetDtos.cs -> BudgetMonthlySummaryResponse
+    (GET /me/budgets/monthly)."""
+    month: int
+    year: int
+    total_limit: float = 0.0
+    total_spent: float = 0.0
+    budgets: list[Budget] = Field(default_factory=list)
+
+
+class SavingsGoal(ApiModel):
+    """Espejo de Dtos/SavingsGoals/SavingsGoalDtos.cs -> SavingsGoalResponse
+    (GET /me/savings-goals)."""
+    id_goal: int
+    name: str
+    target_amount: float
+    current_amount: float = 0.0
+    progress_percent: float = 0.0
+    target_date: datetime
+    status: Literal["active", "paused", "completed"] = "active"
+    created_at: datetime
+    updated_at: datetime
+    x_placeholder: bool = Field(default=False)
+    x_position: PositionMetadata = Field(
+        default_factory=lambda: PositionMetadata(
+            display_order=1,
+            section=Section.MAIN,
+            priority=Priority.MEDIUM,
+            visual=VisualMetadata(icon=IconType.GOAL, variant=ComponentVariant.SECONDARY, tone=BadgeTone.SUCCESS, emphasis="highlighted"),
+            accessibility=AccessibilityMetadata(
+                aria_label="Meta de ahorro",
+                screen_reader_text="Meta de ahorro con su avance",
+                plain_language_text="Cuánto llevas ahorrado para esto",
+                tooltip="Ver el detalle de esta meta"
+            )
+        )
+    )
+
+
+class CreditCard(ApiModel):
+    """Espejo de Dtos/Accounts/CreditCardDtos.cs -> CreditCardResponse
+    (GET/POST /me/credit-cards)."""
+    id_credit_card: int
+    card_number_masked: str
+    card_type: Optional[str] = None
+    credit_limit: float
+    available_credit: float
+    interest_rate: float = 0.0
+    statement_cut_off_day: int
+    payment_due_day: int
+    status: Literal["active", "blocked", "cancelled"] = "active"
+    created_at: datetime
+    x_placeholder: bool = Field(default=False)
+    x_position: PositionMetadata = Field(
+        default_factory=lambda: PositionMetadata(
+            display_order=1,
+            section=Section.MAIN,
+            priority=Priority.HIGH,
+            visual=VisualMetadata(icon=IconType.CARD, variant=ComponentVariant.PRIMARY, emphasis="highlighted"),
+            accessibility=AccessibilityMetadata(
+                aria_label="Tarjeta de crédito",
+                screen_reader_text="Tarjeta de crédito con su límite y crédito disponible",
+                plain_language_text="Tu tarjeta de crédito",
+                tooltip="Ver los estados de cuenta de esta tarjeta"
+            )
+        )
+    )
+
+
+class CreditCardStatement(ApiModel):
+    """Espejo de Dtos/Accounts/CreditCardDtos.cs -> CreditCardStatementResponse
+    (GET /me/credit-cards/{cardId}/statements)."""
+    id_credit_card_statement: int
+    id_credit_card: int
+    id_statement: int
+    period_start: date
+    period_end: date
+    previous_balance: float = 0.0
+    total_payments: float = 0.0
+    total_credits: float = 0.0
+    total_purchases: float = 0.0
+    interest_charges: float = 0.0
+    minimum_payment: float = 0.0
+    payment_due_date: date
+    available_credit: float = 0.0
+    status: Literal["generated", "archived"] = "generated"
+    generated_at: datetime
+    x_placeholder: bool = Field(default=False)
+    x_position: PositionMetadata = Field(
+        default_factory=lambda: PositionMetadata(
+            display_order=1,
+            section=Section.MAIN,
+            priority=Priority.MEDIUM,
+            visual=VisualMetadata(icon=IconType.STATEMENT, variant=ComponentVariant.SECONDARY, tone=BadgeTone.INFO),
+            accessibility=AccessibilityMetadata(
+                aria_label="Estado de cuenta de tarjeta",
+                screen_reader_text="Estado de cuenta de la tarjeta de crédito",
+                plain_language_text="Resumen de un mes de tu tarjeta",
+                tooltip="Ver el mínimo a pagar y la fecha límite"
+            )
+        )
+    )
+
+
 class MemoryEvent(ApiModel):
     """Espejo de Models/MemoryEvent.cs. Pablo TODAVÍA no expone un endpoint
     /memory/query en la API real (no está en Endpoints/*), así que
@@ -533,6 +810,76 @@ class GetReconciliationStatusArgs(BaseModel):
     id_user: Optional[int] = None
     id_transfer: Optional[int] = None
     id_account: Optional[int] = None
+    status: Optional[Literal["pending", "matched", "mismatch"]] = None
+
+
+class GetAccountSummaryArgs(BaseModel):
+    id_user: int
+
+
+class GetAccountDetailArgs(BaseModel):
+    id_account: int
+
+
+class GetAllTransactionsArgs(BaseModel):
+    """Equivale a GET /me/transactions: mismos filtros que
+    GetTransactionsArgs pero a través de todas las cuentas del usuario."""
+    id_user: int
+    id_account: Optional[int] = None
+    date_from: Optional[date] = None
+    date_to: Optional[date] = None
+    category: Optional[str] = None
+    limit: int = Field(20, ge=1, le=200)
+
+
+class GetTransfersArgs(BaseModel):
+    id_user: int
+    status: Optional[Literal["pending", "pending_confirmation", "confirmed", "failed"]] = None
+    id_origin_account: Optional[int] = None
+    date_from: Optional[datetime] = None
+    date_to: Optional[datetime] = None
+    limit: int = Field(20, ge=1, le=200)
+
+
+class GetTransferDetailArgs(BaseModel):
+    id_transfer: int
+
+
+class GetStatementsArgs(BaseModel):
+    id_account: int
+    year: Optional[int] = None
+    month: Optional[int] = None
+    status: Optional[Literal["generated", "archived"]] = None
+
+
+class GetStatementDetailArgs(BaseModel):
+    id_account: int
+    id_statement: int
+
+
+class GetExpenseCategoriesArgs(BaseModel):
+    search: Optional[str] = None
+
+
+class GetBudgetsMonthlyArgs(BaseModel):
+    year: int
+    month: int
+    category: Optional[str] = None
+    status: Optional[Literal["active", "exceeded"]] = None
+
+
+class GetSavingsGoalsArgs(BaseModel):
+    status: Optional[Literal["active", "paused", "completed"]] = None
+
+
+class GetCreditCardsArgs(BaseModel):
+    status: Optional[Literal["active", "blocked", "cancelled"]] = None
+
+
+class GetCreditCardStatementsArgs(BaseModel):
+    id_credit_card: int
+    year: Optional[int] = None
+    month: Optional[int] = None
 
 
 # ---------------------------------------------------------------------------
@@ -557,7 +904,7 @@ class StepArguments(BaseModel):
     """
     id_user: Optional[int] = Field(default=None, description="PK de Users (IdUser)")
     id_account: Optional[int] = Field(default=None, description="PK de Accounts (IdAccount)")
-    id_origin_account: Optional[int] = Field(default=None, description="Cuenta origen de una transferencia (IdOriginAccount)")
+    id_origin_account: Optional[int] = Field(default=None, description="Cuenta origen de una transferencia, o filtro originAccountId en get_transfers (IdOriginAccount)")
     id_session: Optional[int] = Field(default=None, description="PK de Sessions (IdSession)")
     id_transfer: Optional[int] = Field(default=None, description="PK de Transfers (IdTransfer)")
     destination_alias: Optional[str] = Field(default=None)
@@ -570,6 +917,20 @@ class StepArguments(BaseModel):
     date_to: Optional[date] = Field(default=None)
     limit: int = Field(default=20)
     method: str = Field(default="app", description="Método de confirmación: app, otp, biometric, app_pin")
+    # --- Campos agregados junto con los endpoints nuevos de Pablo (Statements,
+    # Budgets, SavingsGoals, CreditCards, ExpenseCategories, /me/transactions,
+    # /transfers). Igual que los de arriba: "no lo sé" es siempre null, nunca
+    # un placeholder de texto inventado.
+    status: Optional[str] = Field(default=None, description="Filtro de estado (varía por tool: active/blocked, pending/confirmed, generated/archived, active/exceeded, active/paused/completed...)")
+    account_type: Optional[str] = Field(default=None, description="Filtro de accounts.list: 'debito' o 'credito'")
+    category: Optional[str] = Field(default=None, description="Filtro de texto libre para transacciones/presupuestos (categoría)")
+    expense_category: Optional[str] = Field(default=None, description="Código de app/schemas ExpenseCategory para filtrar transacciones")
+    direction: Optional[str] = Field(default=None, description="Filtro de transacciones: 'credit' o 'debit'")
+    search: Optional[str] = Field(default=None, description="Texto libre de búsqueda (transacciones o categorías de gasto)")
+    year: Optional[int] = Field(default=None, description="Año para estados de cuenta/presupuestos")
+    month: Optional[int] = Field(default=None, description="Mes (1-12) para estados de cuenta/presupuestos")
+    id_statement: Optional[int] = Field(default=None, description="PK de Statements (IdStatement), para get_statement_detail")
+    id_credit_card: Optional[int] = Field(default=None, description="PK de CreditCards (IdCreditCard)")
 
 
 # Fuente única de verdad para los placeholders de TEXTO válidos de "steps"
@@ -611,13 +972,23 @@ CANONICAL_INTENTS: list[str] = [
     "view_profile",            # GET /users/me
     "update_preferences",      # PUT /me/preferences
     "view_accounts",           # GET /accounts
+    "view_account_summary",    # GET /me/account-summary
     "view_account_detail",     # GET /accounts/{id}
     "view_transactions",       # GET /accounts/{id}/transactions
+    "view_all_transactions",   # GET /me/transactions
     "view_balance",            # GET /accounts/{id}/daily-balances
     "make_transfer",           # POST /transfers
     "confirm_transfer",        # POST /transfers/{id}/confirm
+    "view_transfers",          # GET /transfers
     "view_transfer_status",    # GET /transfers/{id}
     "view_reconciliation",     # GET /reconciliation
+    "view_statements",         # GET /accounts/{id}/statements
+    "view_statement_detail",   # GET /accounts/{id}/statements/{id}
+    "view_expense_categories", # GET /expense-categories
+    "view_budgets",            # GET /me/budgets/monthly
+    "view_savings_goals",      # GET /me/savings-goals
+    "view_credit_cards",       # GET /me/credit-cards
+    "view_credit_card_statements",  # GET /me/credit-cards/{id}/statements
     "search_memory",           # aún sin endpoint real (ver MemoryEvent)
     "provide_overview",        # sin endpoint: saludo / "qué puedes hacer"
 ]
@@ -626,6 +997,7 @@ CANONICAL_INTENTS: list[str] = [
 # completos -> se mapean directo sin pasar por similitud de texto.
 INTENT_ALIASES: dict[str, str] = {
     "general_inquiry": "provide_overview",
+    "general_help": "provide_overview",
     "greeting": "provide_overview",
     "help": "provide_overview",
     "overview": "provide_overview",
@@ -645,6 +1017,35 @@ INTENT_ALIASES: dict[str, str] = {
     "change_theme": "update_preferences",
     "reconciliation_status": "view_reconciliation",
     "memory_search": "search_memory",
+    "account_summary": "view_account_summary",
+    "total_balance": "view_account_summary",
+    "get_account_summary": "view_account_summary",
+    "account_detail": "view_account_detail",
+    "get_account_detail": "view_account_detail",
+    "all_transactions": "view_all_transactions",
+    "global_transactions": "view_all_transactions",
+    "get_all_transactions": "view_all_transactions",
+    "transfer_history": "view_transfers",
+    "list_transfers": "view_transfers",
+    "get_transfers": "view_transfers",
+    "transfer_detail": "view_transfer_status",
+    "get_transfer_detail": "view_transfer_status",
+    "statements": "view_statements",
+    "account_statements": "view_statements",
+    "get_statements": "view_statements",
+    "statement_detail": "view_statement_detail",
+    "get_statement_detail": "view_statement_detail",
+    "expense_categories": "view_expense_categories",
+    "get_expense_categories": "view_expense_categories",
+    "budgets": "view_budgets",
+    "monthly_budgets": "view_budgets",
+    "get_budgets_monthly": "view_budgets",
+    "savings_goals": "view_savings_goals",
+    "get_savings_goals": "view_savings_goals",
+    "credit_cards": "view_credit_cards",
+    "get_credit_cards": "view_credit_cards",
+    "credit_card_statements": "view_credit_card_statements",
+    "get_credit_card_statements": "view_credit_card_statements",
 }
 
 CANONICAL_ACTION_IDS: list[str] = [
@@ -662,7 +1063,73 @@ CANONICAL_ACTION_IDS: list[str] = [
     "suggest_open_settings",
     "suggest_contact_support",
     "suggest_enable_high_contrast",
+    "suggest_view_account_summary",
+    "suggest_view_all_transactions",
+    "suggest_view_statements",
+    "suggest_view_budgets",
+    "suggest_view_savings_goals",
+    "suggest_view_credit_cards",
+    "suggest_view_expense_categories",
+    "suggest_view_account_detail",
+    "suggest_view_transfer_detail",
+    "suggest_view_statement_detail",
+    "suggest_view_credit_card_statements",
+    "suggest_view_reconciliation",
 ]
+
+# Invenciones observadas del modelo que NO son typos sino atajos
+# semánticos (ej. 'suggest_view_card_statements' cuando habla de la
+# tarjeta): por similitud pura caerían en el id canónico equivocado
+# ('suggest_view_statements' en vez del de tarjeta), así que se mapean
+# directo sin pasar por difflib (ver plan_normalizer.py).
+ACTION_ID_ALIASES: dict[str, str] = {
+    "suggest_view_card_statements": "suggest_view_credit_card_statements",
+    "suggest_view_card_statement": "suggest_view_credit_card_statements",
+    "suggest_view_debts": "suggest_view_credit_cards",
+    "suggest_view_debts_history": "suggest_view_credit_card_statements",
+}
+
+# El modelo a veces escribe el INTENT (view_balance) o un atajo en el
+# campo "tool" del step/sugerencia, que solo acepta TOOL_NAMES. Por
+# similitud pura algunos caerían en la tool equivocada (ej.
+# 'get_card_statements' es más parecido a 'get_statements' que a
+# 'get_credit_card_statements', aunque significa lo segundo), así que
+# estos se mapean directo antes de usar difflib.
+TOOL_ALIASES: dict[str, str] = {
+    "view_profile": "get_user_context",
+    "view_accounts": "get_accounts",
+    "view_account_summary": "get_account_summary",
+    "view_account_detail": "get_account_detail",
+    "view_transactions": "get_transactions",
+    "view_all_transactions": "get_all_transactions",
+    "view_balance": "get_daily_balance",
+    "daily_balance": "get_daily_balance",
+    "make_transfer": "prepare_transfer",
+    "transfer_money": "prepare_transfer",
+    "send_money": "prepare_transfer",
+    "view_transfers": "get_transfers",
+    "transfer_history": "get_transfers",
+    "list_transfers": "get_transfers",
+    "view_transfer_status": "get_transfer_detail",
+    "view_reconciliation": "get_reconciliation_status",
+    "reconciliation_status": "get_reconciliation_status",
+    "view_statements": "get_statements",
+    "view_statement_detail": "get_statement_detail",
+    "view_expense_categories": "get_expense_categories",
+    "view_budgets": "get_budgets_monthly",
+    "get_budget": "get_budgets_monthly",
+    "get_budgets": "get_budgets_monthly",
+    "monthly_budgets": "get_budgets_monthly",
+    "view_savings_goals": "get_savings_goals",
+    "savings_goals": "get_savings_goals",
+    "view_credit_cards": "get_credit_cards",
+    "credit_cards": "get_credit_cards",
+    "view_credit_card_statements": "get_credit_card_statements",
+    "get_card_statements": "get_credit_card_statements",
+    "card_statements": "get_credit_card_statements",
+    "search_memory": "search_memory_context",
+    "memory_search": "search_memory_context",
+}
 
 
 class PlannedStep(BaseModel):
@@ -822,12 +1289,24 @@ STEP_ARGUMENTS_SCHEMA = {
         "date_from": {"type": ["string", "null"], "description": "Fecha ISO (YYYY-MM-DD) o null"},
         "date_to": {"type": ["string", "null"], "description": "Fecha ISO (YYYY-MM-DD) o null"},
         "limit": {"type": "integer"},
-        "method": {"type": "string"}
+        "method": {"type": "string"},
+        "status": {"type": ["string", "null"], "description": "Filtro de estado, depende de la tool"},
+        "account_type": {"type": ["string", "null"], "description": "'debito' o 'credito'"},
+        "category": {"type": ["string", "null"]},
+        "expense_category": {"type": ["string", "null"]},
+        "direction": {"type": ["string", "null"], "description": "'credit' o 'debit'"},
+        "search": {"type": ["string", "null"]},
+        "year": {"type": ["integer", "null"]},
+        "month": {"type": ["integer", "null"]},
+        "id_statement": {"type": ["integer", "null"]},
+        "id_credit_card": {"type": ["integer", "null"]}
     },
     "required": [
         "id_user", "id_account", "id_origin_account", "id_session",
         "id_transfer", "destination_alias", "destination_masked", "amount",
-        "currency", "concept", "query", "date_from", "date_to", "limit", "method"
+        "currency", "concept", "query", "date_from", "date_to", "limit", "method",
+        "status", "account_type", "category", "expense_category", "direction",
+        "search", "year", "month", "id_statement", "id_credit_card"
     ],
     "additionalProperties": False
 }
@@ -917,10 +1396,22 @@ ACTION_PLAN_SCHEMA = {
 DEFAULT_UI_HINT_BY_TOOL: dict[str, str] = {
     "get_user_context": UIHint.NONE.value,
     "get_accounts": UIHint.SUMMARY.value,
+    "get_account_summary": UIHint.SUMMARY.value,
+    "get_account_detail": UIHint.SUMMARY.value,
     "get_transactions": UIHint.TABLE.value,
+    "get_all_transactions": UIHint.TABLE.value,
     "get_daily_balance": UIHint.SUMMARY.value,
     "search_memory_context": UIHint.NONE.value,
     "prepare_transfer": UIHint.FORM.value,
     "confirm_transfer": UIHint.CONFIRMATION.value,
+    "get_transfers": UIHint.TABLE.value,
+    "get_transfer_detail": UIHint.SUMMARY.value,
     "get_reconciliation_status": UIHint.TABLE.value,
+    "get_statements": UIHint.TABLE.value,
+    "get_statement_detail": UIHint.SUMMARY.value,
+    "get_expense_categories": UIHint.TABLE.value,
+    "get_budgets_monthly": UIHint.SUMMARY.value,
+    "get_savings_goals": UIHint.TABLE.value,
+    "get_credit_cards": UIHint.TABLE.value,
+    "get_credit_card_statements": UIHint.TABLE.value,
 }

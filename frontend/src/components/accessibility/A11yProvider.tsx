@@ -54,24 +54,25 @@ const A11yContext = createContext<A11yContextValue | null>(null);
  * En el proyecto real, este estado también se sincroniza contra
  * GET/PUT /me/preferences (vía Cain) para persistir la preferencia del usuario.
  */
-export function A11yProvider({ children }: { children: ReactNode }) {
-    const [state, setState] = useState<A11yState>(defaultState);
-
-    // Cargar preferencia guardada localmente al montar (placeholder mientras
-    // se conecta a /me/preferences vía Cain).
-    useEffect(() => {
+function estadoInicial(): A11yState {
+    // Cargar preferencia guardada localmente al crear el estado (en vez de
+    // setState dentro de un effect): placeholder mientras se conecta a
+    // /me/preferences vía Cain.
+    if (typeof window === "undefined") return defaultState;
+    try {
         const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            try {
-                setState({ ...defaultState, ...JSON.parse(saved) });
-            } catch {
-                // valor corrupto, se ignora y se usa el default
-            }
-        } else {
-            const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-            setState((prev) => ({ ...prev, reducedMotion: prefersReducedMotion }));
-        }
-    }, []);
+        if (saved) return { ...defaultState, ...JSON.parse(saved) };
+    } catch {
+        // valor corrupto, se ignora y se usa el default
+    }
+    return {
+        ...defaultState,
+        reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    };
+}
+
+export function A11yProvider({ children }: { children: ReactNode }) {
+    const [state, setState] = useState<A11yState>(estadoInicial);
 
     // Reflejar el estado en el <html> y persistirlo
     useEffect(() => {

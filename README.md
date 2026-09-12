@@ -54,10 +54,10 @@ python -m app.server.mcp_server
 
 ## Qué falta para que Cain conecte la API real
 
-Cada función `mock_*` de `app/placeholders/mock_data.py` documenta, en su
-docstring, exactamente qué método de `app/integration/api_client.py`
+Cada función `mock_*` de `mcp/app/placeholders/mock_data.py` documenta, en su
+docstring, exactamente qué método de `mcp/app/integration/api_client.py`
 (`BancaApiClient`) la reemplaza. El cambio es SOLO en el cuerpo de
-`app/tools/tools.py` (llamar a `BancaApiClient` en vez de `mock_data`) —
+`mcp/app/tools/tools.py` (llamar a `BancaApiClient` en vez de `mock_data`) —
 las firmas de las 8 tools y de `planificar_accion` no cambian, así que el
 frontend y el resto del contrato A2UI siguen funcionando igual.
 
