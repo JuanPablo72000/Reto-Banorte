@@ -25,6 +25,9 @@ public class Transaction
     [MaxLength(60)]
     public string Reference { get; set; } = string.Empty;
 
+    public int? IdExpenseCategory { get; set; }
+
     public Account Account { get; set; } = null!;
     public ReconciliationMatch? ReconciliationMatch { get; set; }
+    public ExpenseCategory? ExpenseCategory { get; set; }
 }

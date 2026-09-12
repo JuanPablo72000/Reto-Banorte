@@ -19,6 +19,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<TransferConfirmation> TransferConfirmations => Set<TransferConfirmation>();
     public DbSet<ReconciliationMatch> ReconciliationMatches => Set<ReconciliationMatch>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+    public DbSet<Statement> Statements => Set<Statement>();
+    public DbSet<StatementExpense> StatementExpenses => Set<StatementExpense>();
+    public DbSet<Budget> Budgets => Set<Budget>();
+    public DbSet<SavingsGoal> SavingsGoals => Set<SavingsGoal>();
+    public DbSet<CreditCard> CreditCards => Set<CreditCard>();
+    public DbSet<CreditCardStatement> CreditCardStatements => Set<CreditCardStatement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -50,6 +57,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<Transaction>().Property(t => t.Date).HasConversion(dateOnlyConverter);
         modelBuilder.Entity<DailyBalance>().Property(d => d.Date).HasConversion(dateOnlyConverter);
+        modelBuilder.Entity<Statement>().Property(s => s.PeriodStart).HasConversion(dateOnlyConverter);
+        modelBuilder.Entity<Statement>().Property(s => s.PeriodEnd).HasConversion(dateOnlyConverter);
+        modelBuilder.Entity<StatementExpense>().Property(e => e.FirstTransactionDate).HasConversion(dateOnlyConverter);
+        modelBuilder.Entity<StatementExpense>().Property(e => e.LastTransactionDate).HasConversion(dateOnlyConverter);
+        modelBuilder.Entity<CreditCardStatement>().Property(s => s.PaymentDueDate).HasConversion(dateOnlyConverter);
 
         // --- Relaciones ---
         modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
@@ -156,5 +168,70 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany(u => u.AuditLogs)
             .HasForeignKey(a => a.IdUser)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // --- Estados de cuenta y finanzas personales ---
+        modelBuilder.Entity<ExpenseCategory>().HasIndex(c => c.Code).IsUnique();
+
+        modelBuilder.Entity<Transaction>()
+            .HasOne(t => t.ExpenseCategory)
+            .WithMany(c => c.Transactions)
+            .HasForeignKey(t => t.IdExpenseCategory)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Statement>()
+            .HasOne(s => s.Account)
+            .WithMany(a => a.Statements)
+            .HasForeignKey(s => s.IdAccount)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Statement>().HasIndex(s => new { s.IdAccount, s.PeriodStart }).IsUnique();
+
+        modelBuilder.Entity<StatementExpense>()
+            .HasOne(e => e.Statement)
+            .WithMany(s => s.StatementExpenses)
+            .HasForeignKey(e => e.IdStatement)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StatementExpense>()
+            .HasOne(e => e.ExpenseCategory)
+            .WithMany(c => c.StatementExpenses)
+            .HasForeignKey(e => e.IdExpenseCategory)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StatementExpense>().HasIndex(e => new { e.IdStatement, e.IdExpenseCategory }).IsUnique();
+
+        modelBuilder.Entity<Budget>()
+            .HasOne(b => b.User)
+            .WithMany(u => u.Budgets)
+            .HasForeignKey(b => b.IdUser)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Budget>()
+            .HasOne(b => b.ExpenseCategory)
+            .WithMany(c => c.Budgets)
+            .HasForeignKey(b => b.IdExpenseCategory)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Budget>().HasIndex(b => new { b.IdUser, b.IdExpenseCategory, b.Month, b.Year }).IsUnique();
+
+        modelBuilder.Entity<SavingsGoal>()
+            .HasOne(g => g.User)
+            .WithMany(u => u.SavingsGoals)
+            .HasForeignKey(g => g.IdUser)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CreditCard>()
+            .HasOne(c => c.User)
+            .WithMany(u => u.CreditCards)
+            .HasForeignKey(c => c.IdUser)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CreditCardStatement>()
+            .HasOne(s => s.CreditCard)
+            .WithMany(c => c.CreditCardStatements)
+            .HasForeignKey(s => s.IdCreditCard)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CreditCardStatement>()
+            .HasOne(s => s.Statement)
+            .WithOne(s => s.CreditCardStatement)
+            .HasForeignKey<CreditCardStatement>(s => s.IdStatement)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CreditCardStatement>().HasIndex(s => s.IdStatement).IsUnique();
     }
 }

@@ -35,6 +35,8 @@ stateKeys:
   - selectedAccountId
   - currentTransferId
   - selectedDateRange
+  - selectedStatementId
+  - selectedCardId
 
 formats:
   currency:
@@ -184,6 +186,105 @@ dataRefs:
     uiHints:
       - ReconciliationTable
 
+  statements.list:
+    description: "Estados de cuenta mensuales pre-computados de una cuenta, por fecha de corte."
+    operationId: getAccountStatements
+    method: GET
+    path: "/accounts/{accountId}/statements"
+    selector: "$"
+    format: list
+    sensitivity: medium
+    params:
+      accountId:
+        type: integer
+        required: true
+        source: state.selectedAccountId
+    uiHints:
+      - StatementList
+      - StatementSummary
+
+  statements.expenses:
+    description: "Detalle de un estado de cuenta con desglose de gastos por categoría."
+    operationId: getAccountStatementDetail
+    method: GET
+    path: "/accounts/{accountId}/statements/{statementId}"
+    selector: "$"
+    format: object
+    sensitivity: medium
+    params:
+      accountId:
+        type: integer
+        required: true
+        source: state.selectedAccountId
+      statementId:
+        type: integer
+        required: true
+        source: state.selectedStatementId
+    uiHints:
+      - StatementSummary
+      - ExpenseBreakdownChart
+
+  expenseCategories.list:
+    description: "Catálogo de clasificaciones de gasto (gasolina, restaurantes, etc.)."
+    operationId: getExpenseCategories
+    method: GET
+    path: "/expense-categories"
+    selector: "$"
+    format: list
+    sensitivity: low
+    uiHints:
+      - CategoryList
+
+  budgets.monthly:
+    description: "Resumen de presupuestos por categoría del mes."
+    operationId: getMonthlyBudgets
+    method: GET
+    path: "/me/budgets/monthly"
+    selector: "$"
+    format: object
+    sensitivity: medium
+    uiHints:
+      - BudgetProgressCard
+
+  savingsGoals.list:
+    description: "Metas de ahorro del usuario con su progreso."
+    operationId: getSavingsGoals
+    method: GET
+    path: "/me/savings-goals"
+    selector: "$"
+    format: list
+    sensitivity: medium
+    uiHints:
+      - SavingsGoalCard
+
+  creditCards.list:
+    description: "Tarjetas de crédito del usuario."
+    operationId: getCreditCards
+    method: GET
+    path: "/me/credit-cards"
+    selector: "$"
+    format: list
+    sensitivity: high
+    uiHints:
+      - CreditCardSummary
+
+  creditCard.statements:
+    description: "Estados de cuenta de una tarjeta de crédito (interés, pago mínimo, vencimiento)."
+    operationId: getCreditCardStatements
+    method: GET
+    path: "/me/credit-cards/{cardId}/statements"
+    selector: "$"
+    format: list
+    sensitivity: high
+    params:
+      cardId:
+        type: integer
+        required: true
+        source: state.selectedCardId
+    uiHints:
+      - CreditCardSummary
+      - StatementSummary
+
 actions:
 
   confirmTransfer:
@@ -254,6 +355,55 @@ components:
       - items
     itemsMustBeDataRef: true
     exampleDataRef: reconciliation.list
+
+  StatementList:
+    description: "Lista de estados de cuenta mensuales."
+    requiredProps:
+      - items
+    itemsMustBeDataRef: true
+    exampleDataRef: statements.list
+
+  StatementSummary:
+    description: "Resumen de un estado de cuenta con totales y periodo de corte."
+    requiredProps:
+      - data
+    dataMustBeDataRef: true
+    exampleDataRef: statements.expenses
+
+  ExpenseBreakdownChart:
+    description: "Gráfica del desglose de gastos por categoría."
+    requiredProps:
+      - items
+    itemsMustBeDataRef: true
+    exampleDataRef: statements.expenses
+
+  CategoryList:
+    description: "Catálogo de clasificaciones de gasto."
+    requiredProps:
+      - items
+    itemsMustBeDataRef: true
+    exampleDataRef: expenseCategories.list
+
+  BudgetProgressCard:
+    description: "Tarjeta de progreso de presupuestos por categoría del mes."
+    requiredProps:
+      - data
+    dataMustBeDataRef: true
+    exampleDataRef: budgets.monthly
+
+  SavingsGoalCard:
+    description: "Tarjeta de meta de ahorro con su progreso."
+    requiredProps:
+      - items
+    itemsMustBeDataRef: true
+    exampleDataRef: savingsGoals.list
+
+  CreditCardSummary:
+    description: "Resumen de tarjeta de crédito y sus estados de cuenta."
+    requiredProps:
+      - items
+    itemsMustBeDataRef: true
+    exampleDataRef: creditCards.list
 
 examples:
 
