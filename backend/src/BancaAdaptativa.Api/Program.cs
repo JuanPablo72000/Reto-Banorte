@@ -97,3 +97,5 @@ app.MapAccounts();
 app.MapTransfers();
 
 app.Run();
+
+public partial class Program { }
