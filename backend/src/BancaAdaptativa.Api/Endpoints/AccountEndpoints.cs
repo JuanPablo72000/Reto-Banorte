@@ -40,5 +40,32 @@ public static class AccountEndpoints
 
         g.MapGet("/reconciliation", async (ClaimsPrincipal user, IAccountQueryService svc, CancellationToken ct) =>
             Results.Ok(await svc.ReconciliationAsync(user.GetUserId(), ct)));
+
+        g.MapGet("/accounts/{accountId:int}/statements", async (
+            int accountId, ClaimsPrincipal user, IStatementService svc,
+            int? year, int? month, CancellationToken ct) =>
+        {
+            try { return Results.Ok(await svc.ListAsync(user.GetUserId(), accountId, year, month, ct)); }
+            catch (KeyNotFoundException) { return Results.NotFound(); }
+        });
+
+        g.MapGet("/accounts/{accountId:int}/statements/{statementId:int}", async (
+            int statementId, ClaimsPrincipal user, IStatementService svc, CancellationToken ct) =>
+        {
+            try { return Results.Ok(await svc.GetDetailAsync(user.GetUserId(), statementId, ct)); }
+            catch (KeyNotFoundException) { return Results.NotFound(); }
+        });
+
+        g.MapPost("/accounts/{accountId:int}/statements/generate", async (
+            int accountId, ClaimsPrincipal user, IStatementService svc,
+            int year, int month, int cutOffDay, CancellationToken ct) =>
+        {
+            try { return Results.Created($"/accounts/{accountId}/statements", await svc.GenerateAsync(user.GetUserId(), accountId, year, month, cutOffDay, ct)); }
+            catch (KeyNotFoundException) { return Results.NotFound(); }
+            catch (ArgumentOutOfRangeException ex) { return Results.BadRequest(new { error = ex.ParamName ?? "INVALID_RANGE" }); }
+        });
+
+        g.MapGet("/expense-categories", async (IStatementService svc, CancellationToken ct) =>
+            Results.Ok(await svc.CategoriesAsync(ct)));
     }
 }

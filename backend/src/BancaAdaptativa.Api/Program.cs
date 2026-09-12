@@ -20,6 +20,11 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPreferenceService, PreferenceService>();
 builder.Services.AddScoped<IAccountQueryService, AccountQueryService>();
 builder.Services.AddScoped<ITransferService, TransferService>();
+builder.Services.AddScoped<IStatementService, StatementService>();
+builder.Services.AddScoped<IBudgetService, BudgetService>();
+builder.Services.AddScoped<ISavingsGoalService, SavingsGoalService>();
+builder.Services.AddScoped<ICreditCardService, CreditCardService>();
+builder.Services.AddHostedService<StatementGenerationService>();
 
 // JWT real
 var jwtKey = builder.Configuration["Jwt:Key"] ?? Environment.GetEnvironmentVariable("JWT_KEY") ?? "";
@@ -95,6 +100,9 @@ app.MapAuth();
 app.MapUsers();
 app.MapAccounts();
 app.MapTransfers();
+app.MapBudgets();
+app.MapSavingsGoals();
+app.MapCreditCards();
 
 app.Run();
 

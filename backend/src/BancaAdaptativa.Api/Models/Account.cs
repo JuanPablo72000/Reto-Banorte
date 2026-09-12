@@ -30,4 +30,5 @@ public class Account
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
     public ICollection<DailyBalance> DailyBalances { get; set; } = new List<DailyBalance>();
     public ICollection<Transfer> Transfers { get; set; } = new List<Transfer>();
+    public ICollection<Statement> Statements { get; set; } = new List<Statement>();
 }
