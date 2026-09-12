@@ -2,14 +2,23 @@ services:
   api:
     build:
       context: ./backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+      dockerfile: Dockerfile
     environment:
-      DATABASE_URL: sqlite:////data/app.db
+      ASPNETCORE_ENVIRONMENT: Production
+      # SQLite persistido en el volumen sqlite-data.
+      ConnectionStrings__Default: "Data Source=/data/app.db"
+      # Secreto de firma JWT (mín. 32 chars). Definir en .env (ver .env.example).
+      JWT_KEY: ${JWT_KEY:?Define JWT_KEY en tu archivo .env}
     volumes:
-      - ./backend:/app
       - sqlite-data:/data
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   mcp:
     build:
@@ -17,7 +26,8 @@ services:
     environment:
       API_URL: http://api:8000
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     ports:
       - "8080:8080"
 
@@ -29,16 +39,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - api
-
-  seed:
-    build:
-      context: ./backend
-    command: python -m app.seed.main
-    environment:
-      DATABASE_URL: sqlite:////data/app.db
-    volumes:
-      - sqlite-data:/data
+      api:
+        condition: service_healthy
 
 volumes:
   sqlite-data:

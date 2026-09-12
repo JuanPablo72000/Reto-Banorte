@@ -1,0 +1,18 @@
+{
+  "stryker-config": {
+    "project": "src/BancaAdaptativa.Api/BancaAdaptativa.Api.csproj",
+    "test-projects": ["tests/BancaAdaptativa.Api.Tests/BancaAdaptativa.Api.Tests.csproj"],
+    "reporters": ["html", "json", "progress"],
+    "thresholds": { "high": 80, "low": 60, "break": 60 },
+    "mutate": [
+      "Services/**/*.cs",
+      "Data/AppDbContext.cs",
+      "Data/DbSeeder.cs",
+      "!**/Migrations/**",
+      "!**/*.Designer.cs"
+    ],
+    "ignore-mutations": ["Linq"],
+    "concurrency": 4,
+    "coverage-analysis": "perTest"
+  }
+}
