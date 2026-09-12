@@ -28,6 +28,7 @@ backend/data/*.db
 
 # Logs
 *.log
+.vs/
 
 # OS
 .DS_Store
