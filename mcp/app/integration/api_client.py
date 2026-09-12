@@ -103,12 +103,12 @@ class BancaApiClient:
 
     async def get_me_preferences(self) -> dict:
         """GET /me/preferences -> AccessibilityPreferenceResponse."""
-        resp = await self._request("GET", "/me/preferences/")
+        resp = await self._request("GET", "/me/preferences")
         return resp.json()
 
     async def update_me_preferences(self, cambios: dict) -> dict:
         """PUT /me/preferences -> AccessibilityPreferenceResponse actualizado."""
-        resp = await self._request("PUT", "/me/preferences/", json=cambios)
+        resp = await self._request("PUT", "/me/preferences", json=cambios)
         return resp.json()
 
     # -- Cuentas (AccountEndpoints.cs) --------------------------------------
@@ -189,7 +189,7 @@ class BancaApiClient:
         }
         if idempotency_key:
             payload["idempotencyKey"] = idempotency_key
-        resp = await self._request("POST", "/transfers/", json=payload)
+        resp = await self._request("POST", "/transfers", json=payload)
         return resp.json()
 
     async def get_transfer(self, id_transfer: int) -> dict:
