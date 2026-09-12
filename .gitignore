@@ -32,3 +32,14 @@ backend/data/*.db
 
 # OS
 .DS_Store
+
+# IDEs
+# IntelliJ IDEA / PyCharm (comparten el mismo formato de proyecto)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VSCode
+.vscode/
+*.code-workspace
