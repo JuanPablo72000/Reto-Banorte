@@ -1,0 +1,380 @@
+version: 1
+contract: "A2UI-MCP"
+project: "Banca Personal Adaptativa"
+
+owners:
+  backend: "Pablo"
+  mcp: "Guillermo"
+  integration: "Cain"
+  frontend: "Juan Pablo"
+
+apiBaseUrl: "http://localhost:8000"
+openApiPath: "contracts/openapi/openapi.yaml"
+
+principle: |
+  La IA de Guillermo genera componentes A2UI usando placeholders.
+  La IA no debe incluir datos reales sensibles dentro del JSON A2UI.
+  La IA solo indica qué dato se necesita mediante un dataRef.
+  El frontend resuelve ese dataRef llamando a la API de Pablo.
+
+rules:
+  - "La IA solo puede usar dataRefs definidos en este archivo."
+  - "La IA no debe inventar endpoints."
+  - "La IA no debe incluir saldos reales."
+  - "La IA no debe incluir números completos de cuenta."
+  - "La IA no debe incluir datos personales sensibles."
+  - "Todo dato dinámico debe usar un objeto con dataRef."
+  - "Todo dato dinámico debe declarar loading, error y fallback."
+  - "Las fechas e instantes vienen en UTC desde la API."
+  - "El frontend convierte fechas UTC a visualización local si hace falta."
+  - "Las acciones mutantes requieren confirmación explícita del usuario."
+  - "Las acciones deben usar operationId existente en OpenAPI."
+  - "La IA puede generar textos estáticos como títulos, etiquetas o avisos."
+
+stateKeys:
+  - selectedAccountId
+  - currentTransferId
+  - selectedDateRange
+
+formats:
+  currency:
+    description: "Valor monetario."
+    example: 15230.50
+    uiExample: "$15,230.50"
+    requiresCurrencyField: true
+
+  date:
+    description: "Fecha calendario sin hora."
+    example: "2026-06-16"
+
+  datetimeUtc:
+    description: "Instante en UTC."
+    example: "2026-06-16T18:00:00Z"
+
+  list:
+    description: "Lista de elementos."
+    example: []
+
+  object:
+    description: "Objeto completo."
+    example: {}
+
+dataRefs:
+
+  server.time:
+    description: "Hora actual del servidor en UTC."
+    operationId: getServerTime
+    method: GET
+    path: "/server-time"
+    selector: serverTimeUtc
+    format: datetimeUtc
+    sensitivity: low
+    uiHints:
+      - Text
+      - Timestamp
+
+  me.preferences:
+    description: "Preferencias de accesibilidad del usuario."
+    operationId: getMePreferences
+    method: GET
+    path: "/me/preferences"
+    selector: "$"
+    format: object
+    sensitivity: medium
+    uiHints:
+      - AccessibilityPanel
+
+  accounts.list:
+    description: "Lista de cuentas del usuario."
+    operationId: getAccounts
+    method: GET
+    path: "/accounts"
+    selector: "$"
+    format: list
+    sensitivity: medium
+    uiHints:
+      - AccountList
+      - SelectAccount
+
+  accounts.summary.totalBalance:
+    description: "Saldo total de las cuentas del usuario."
+    operationId: getMeAccountSummary
+    method: GET
+    path: "/me/account-summary"
+    selector: totalBalance
+    currencySelector: currency
+    format: currency
+    sensitivity: high
+    uiHints:
+      - StatLabel
+      - StatCard
+
+  account.detail:
+    description: "Detalle de una cuenta específica."
+    operationId: getAccountById
+    method: GET
+    path: "/accounts/{accountId}"
+    selector: "$"
+    format: object
+    sensitivity: medium
+    params:
+      accountId:
+        type: integer
+        required: true
+        source: state.selectedAccountId
+    uiHints:
+      - AccountDetail
+
+  transactions.list:
+    description: "Movimientos de una cuenta."
+    operationId: getAccountTransactions
+    method: GET
+    path: "/accounts/{accountId}/transactions"
+    selector: "$"
+    format: list
+    sensitivity: medium
+    params:
+      accountId:
+        type: integer
+        required: true
+        source: state.selectedAccountId
+    uiHints:
+      - TransactionList
+
+  dailyBalances.list:
+    description: "Balances diarios de una cuenta."
+    operationId: getAccountDailyBalances
+    method: GET
+    path: "/accounts/{accountId}/daily-balances"
+    selector: "$"
+    format: list
+    sensitivity: medium
+    params:
+      accountId:
+        type: integer
+        required: true
+        source: state.selectedAccountId
+    uiHints:
+      - DailyBalanceChart
+
+  transfer.detail:
+    description: "Detalle de una transferencia."
+    operationId: getTransferById
+    method: GET
+    path: "/transfers/{transferId}"
+    selector: "$"
+    format: object
+    sensitivity: high
+    params:
+      transferId:
+        type: integer
+        required: true
+        source: state.currentTransferId
+    uiHints:
+      - TransferSummary
+
+  reconciliation.list:
+    description: "Lista de conciliaciones."
+    operationId: getReconciliation
+    method: GET
+    path: "/reconciliation"
+    selector: "$"
+    format: list
+    sensitivity: medium
+    uiHints:
+      - ReconciliationTable
+
+actions:
+
+  confirmTransfer:
+    description: "Confirma una transferencia pendiente."
+    operationId: confirmTransfer
+    method: POST
+    path: "/transfers/{transferId}/confirm"
+    requiresConfirmation: true
+    idempotencyRequired: true
+    sensitivity: high
+    params:
+      transferId:
+        type: integer
+        required: true
+        source: state.currentTransferId
+    successMessage: "Transferencia confirmada correctamente."
+    errorMessage: "No se pudo confirmar la transferencia."
+
+components:
+
+  StatLabel:
+    description: "Etiqueta para mostrar un valor único, por ejemplo saldo total."
+    requiredProps:
+      - title
+      - value
+    valueMustBeDataRef: true
+    exampleDataRef: accounts.summary.totalBalance
+
+  StatCard:
+    description: "Tarjeta para mostrar un valor destacado."
+    requiredProps:
+      - title
+      - value
+    valueMustBeDataRef: true
+    exampleDataRef: accounts.summary.totalBalance
+
+  AccountList:
+    description: "Lista cuentas del usuario."
+    requiredProps:
+      - items
+    itemsMustBeDataRef: true
+    exampleDataRef: accounts.list
+
+  TransactionList:
+    description: "Lista movimientos de una cuenta."
+    requiredProps:
+      - items
+    itemsMustBeDataRef: true
+    exampleDataRef: transactions.list
+
+  DailyBalanceChart:
+    description: "Gráfica de balance diario."
+    requiredProps:
+      - items
+    itemsMustBeDataRef: true
+    exampleDataRef: dailyBalances.list
+
+  TransferSummary:
+    description: "Resumen de una transferencia."
+    requiredProps:
+      - data
+    dataMustBeDataRef: true
+    exampleDataRef: transfer.detail
+
+  ReconciliationTable:
+    description: "Tabla de conciliación."
+    requiredProps:
+      - items
+    itemsMustBeDataRef: true
+    exampleDataRef: reconciliation.list
+
+examples:
+
+  - id: total-balance
+    intent: "Mostrar cantidad total de la cuenta"
+    description: |
+      Si el usuario pregunta cuánto tiene en la cuenta,
+      la IA debe generar un componente StatLabel con dataRef
+      accounts.summary.totalBalance.
+    a2uiJson: |
+      {
+        "version": "1.0",
+        "viewId": "account-total-balance",
+        "components": [
+          {
+            "componentId": "total-balance-label",
+            "type": "StatLabel",
+            "title": "Cantidad total de la cuenta",
+            "value": {
+              "dataRef": "accounts.summary.totalBalance",
+              "format": "currency",
+              "loading": {
+                "type": "skeleton"
+              },
+              "error": {
+                "type": "text",
+                "value": "No se pudo cargar el saldo"
+              },
+              "fallback": {
+                "type": "text",
+                "value": "--"
+              }
+            },
+            "a11y": {
+              "ariaLabel": "Cantidad total de la cuenta"
+            }
+          }
+        ]
+      }
+
+  - id: account-list
+    intent: "Mostrar cuentas del usuario"
+    a2uiJson: |
+      {
+        "version": "1.0",
+        "viewId": "account-list",
+        "components": [
+          {
+            "componentId": "account-list",
+            "type": "AccountList",
+            "title": "Tus cuentas",
+            "items": {
+              "dataRef": "accounts.list",
+              "format": "list",
+              "loading": {
+                "type": "skeleton"
+              },
+              "error": {
+                "type": "text",
+                "value": "No se pudieron cargar las cuentas"
+              },
+              "empty": {
+                "type": "text",
+                "value": "No tienes cuentas disponibles"
+              }
+            }
+          }
+        ]
+      }
+
+  - id: transaction-list
+    intent: "Mostrar movimientos de una cuenta"
+    a2uiJson: |
+      {
+        "version": "1.0",
+        "viewId": "transaction-list",
+        "components": [
+          {
+            "componentId": "transaction-list",
+            "type": "TransactionList",
+            "title": "Movimientos",
+            "items": {
+              "dataRef": "transactions.list",
+              "params": {
+                "accountId": {
+                  "$state": "selectedAccountId"
+                }
+              },
+              "format": "list",
+              "loading": {
+                "type": "skeleton"
+              },
+              "error": {
+                "type": "text",
+                "value": "No se pudieron cargar los movimientos"
+              },
+              "empty": {
+                "type": "text",
+                "value": "Esta cuenta no tiene movimientos"
+              }
+            }
+          }
+        ]
+      }
+
+validation:
+  rejectIf:
+    - "El JSON A2UI usa un dataRef que no existe en dataRefs."
+    - "El JSON A2UI contiene un saldo real."
+    - "El JSON A2UI contiene un número completo de cuenta."
+    - "El JSON A2UI contiene datos personales sensibles."
+    - "Una acción mutante no requiere confirmación."
+    - "Un dato dinámico no tiene loading, error o fallback."
+
+notesForMcp: |
+  Guillermo:
+  Tu MCP debe cargar este archivo como catálogo permitido.
+  La IA puede usar este contrato para:
+    1. Saber qué dataRefs existen.
+    2. Saber qué componentes puede generar.
+    3. Saber qué acciones puede declarar.
+    4. Validar el JSON A2UI antes de devolverlo.
+  La IA no debe llamar directamente a la API para obtener datos reales
+  cuando solo está generando la interfaz.
