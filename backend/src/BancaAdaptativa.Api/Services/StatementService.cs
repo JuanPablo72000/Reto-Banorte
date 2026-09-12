@@ -8,9 +8,9 @@ namespace BancaAdaptativa.Api.Services;
 public interface IStatementService
 {
     Task<StatementResponse> GenerateAsync(int idUser, int accountId, int year, int month, int cutOffDay, CancellationToken ct = default);
-    Task<IReadOnlyList<StatementResponse>> ListAsync(int idUser, int accountId, int? year, int? month, CancellationToken ct = default);
+    Task<IReadOnlyList<StatementResponse>> ListAsync(int idUser, int accountId, int? year, int? month, string? status = null, CancellationToken ct = default);
     Task<StatementDetailResponse> GetDetailAsync(int idUser, int statementId, CancellationToken ct = default);
-    Task<IReadOnlyList<ExpenseCategoryResponse>> CategoriesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<ExpenseCategoryResponse>> CategoriesAsync(string? search = null, CancellationToken ct = default);
 }
 
 public static class StatementPeriod
@@ -115,12 +115,13 @@ public class StatementService(AppDbContext db, TimeProvider timeProvider, IBudge
         return Map(stmt);
     }
 
-    public async Task<IReadOnlyList<StatementResponse>> ListAsync(int idUser, int accountId, int? year, int? month, CancellationToken ct = default)
+    public async Task<IReadOnlyList<StatementResponse>> ListAsync(int idUser, int accountId, int? year, int? month, string? status = null, CancellationToken ct = default)
     {
         await RequireAccountAsync(idUser, accountId, ct);
         var q = db.Statements.AsNoTracking().Where(s => s.IdAccount == accountId);
         if (year.HasValue) q = q.Where(s => s.PeriodEnd.Year == year.Value);
         if (month.HasValue) q = q.Where(s => s.PeriodEnd.Month == month.Value);
+        if (!string.IsNullOrWhiteSpace(status)) q = q.Where(s => s.Status == status);
         return await q.OrderByDescending(s => s.PeriodEnd)
             .Select(s => new StatementResponse(s.IdStatement, s.IdAccount, s.CutOffDay, s.PeriodStart, s.PeriodEnd,
                 s.OpeningBalance, s.ClosingBalance, s.TotalCredits, s.TotalDebits,
@@ -144,8 +145,12 @@ public class StatementService(AppDbContext db, TimeProvider timeProvider, IBudge
         return new(Map(s), expenses);
     }
 
-    public async Task<IReadOnlyList<ExpenseCategoryResponse>> CategoriesAsync(CancellationToken ct = default) =>
-        await db.ExpenseCategories.AsNoTracking().OrderBy(c => c.SortOrder)
+    public async Task<IReadOnlyList<ExpenseCategoryResponse>> CategoriesAsync(string? search = null, CancellationToken ct = default)
+    {
+        var q = db.ExpenseCategories.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(search)) q = q.Where(c => c.Name.Contains(search) || c.Code.Contains(search));
+        return await q.OrderBy(c => c.SortOrder)
             .Select(c => new ExpenseCategoryResponse(c.IdCategory, c.Name, c.Code, c.Icon, c.IsDefault, c.SortOrder))
             .ToListAsync(ct);
+    }
 }

@@ -49,7 +49,12 @@ builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "BancaAdaptativa.Api", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Banca Adaptativa API",
+        Version = "v1",
+        Description = "API de datos para el frontend y las interfaces generadas por IA. Las rutas protegidas requieren un token JWT."
+    });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -66,7 +71,12 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.WithOrigins("http://localhost:3000").AllowAnyHeader().AllowAnyMethod()));
+    p.WithOrigins(
+        "http://localhost:3000",
+        "http://localhost:4173",
+        "http://localhost:5173")
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
 
 builder.Services.ConfigureHttpJsonOptions(o =>
 {
@@ -80,11 +90,8 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 // Migraciones + seed al arrancar
 using (var scope = app.Services.CreateScope())

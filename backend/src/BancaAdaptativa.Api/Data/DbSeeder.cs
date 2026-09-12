@@ -62,7 +62,8 @@ public static class DbSeeder
             IdUser = user.IdUser, IdOriginAccount = account.IdAccount,
             DestinationAlias = "Mamá", DestinationMasked = "****5678",
             Amount = 2000m, Currency = "MXN", Concept = "Apoyo",
-            Status = "pending", IdempotencyKey = Guid.NewGuid().ToString(), ConfirmedAt = null
+            Status = "pending", IdempotencyKey = Guid.NewGuid().ToString(),
+            CreatedAt = nowUtc, ConfirmedAt = null
         };
         db.Transfers.Add(transfer);
         db.SaveChanges();
