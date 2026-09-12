@@ -7,7 +7,9 @@
     "mutate": [
       "Services/**/*.cs",
       "Data/AppDbContext.cs",
-      "Data/DbSeeder.cs"
+      "Data/DbSeeder.cs",
+      "!**/Migrations/**",
+      "!**/*.Designer.cs"
     ],
     "ignore-mutations": ["Linq"],
     "concurrency": 4,
