@@ -1,0 +1,44 @@
+services:
+  api:
+    build:
+      context: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    environment:
+      DATABASE_URL: sqlite:////data/app.db
+    volumes:
+      - ./backend:/app
+      - sqlite-data:/data
+    ports:
+      - "8000:8000"
+
+  mcp:
+    build:
+      context: ./mcp
+    environment:
+      API_URL: http://api:8000
+    depends_on:
+      - api
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  seed:
+    build:
+      context: ./backend
+    command: python -m app.seed.main
+    environment:
+      DATABASE_URL: sqlite:////data/app.db
+    volumes:
+      - sqlite-data:/data
+
+volumes:
+  sqlite-data:
