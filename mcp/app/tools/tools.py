@@ -50,7 +50,10 @@ async def get_user_context(id_user: int) -> UserContext:
 async def get_accounts(id_user: int) -> list[Account]:
     """Devuelve las cuentas del usuario. Equivale a GET /accounts."""
     logger.info("Tool 'get_accounts' invocada (id_user=%s)", id_user)
-    return mock_data.mock_get_accounts(id_user)
+    client = await get_client_for_user(id_user)  # lo que ya tengan resuelto
+    raw_accounts = await client.get_accounts()
+    return [Account.model_validate(item) for item in raw_accounts]
+    #return mock_data.mock_get_accounts(id_user)
 
 
 async def get_transactions(
