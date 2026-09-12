@@ -1,0 +1,7 @@
+fastmcp
+groq
+google-genai
+pydantic
+python-dotenv
+httpx
+PyYAML

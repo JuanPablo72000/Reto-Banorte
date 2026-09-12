@@ -1,0 +1,23 @@
+{
+  "1": {
+    "id_user": 1,
+    "accessibility_template_actual": "low_vision",
+    "accessibility_historial": [
+      {
+        "template": "low_vision",
+        "template_anterior": "default",
+        "motivo": "Oye, no veo bien, dame una interfaz con la letra grande porfa",
+        "actualizado_en": "2026-09-12T14:44:59+00:00"
+      }
+    ],
+    "clics": {},
+    "intents_recientes": [
+      "make_transfer",
+      "view_balance",
+      "view_balance",
+      "view_balance",
+      "view_balance"
+    ],
+    "actualizado_en": "2026-09-12T15:46:25+00:00"
+  }
+}
