@@ -27,6 +27,8 @@ public class Transfer
     [MaxLength(80)]
     public string IdempotencyKey { get; set; } = Guid.NewGuid().ToString();
 
+    public DateTime CreatedAt { get; set; }
+
     public DateTime? ConfirmedAt { get; set; }
 
     public User User { get; set; } = null!;

@@ -1,7 +1,7 @@
 namespace BancaAdaptativa.Api.Dtos.Transactions;
 
 public record TransactionResponse(
-    int IdTransaction, DateOnly Date, decimal Amount, string Direction,
+    int IdTransaction, int IdAccount, DateOnly Date, decimal Amount, string Direction,
     string Category, string Description, string Status, string Reference,
     int? IdExpenseCategory = null);
 

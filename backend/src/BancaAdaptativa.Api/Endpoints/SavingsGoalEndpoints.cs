@@ -11,10 +11,18 @@ public static class SavingsGoalEndpoints
         var g = app.MapGroup("/me/savings-goals").RequireAuthorization().WithTags("SavingsGoals");
 
         g.MapPost("/", async (CreateSavingsGoalRequest req, ClaimsPrincipal user, ISavingsGoalService svc, CancellationToken ct) =>
-            Results.Created("/me/savings-goals", await svc.CreateAsync(user.GetUserId(), req, ct)));
+            Results.Created("/me/savings-goals", await svc.CreateAsync(user.GetUserId(), req, ct)))
+            .WithName("createSavingsGoal")
+            .WithSummary("Crea una meta de ahorro")
+            .Produces<SavingsGoalResponse>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status401Unauthorized);
 
-        g.MapGet("/", async (ClaimsPrincipal user, ISavingsGoalService svc, CancellationToken ct) =>
-            Results.Ok(await svc.ListAsync(user.GetUserId(), ct)));
+        g.MapGet("/", async (ClaimsPrincipal user, ISavingsGoalService svc, string? status, CancellationToken ct) =>
+            Results.Ok(await svc.ListAsync(user.GetUserId(), status, ct)))
+            .WithName("getSavingsGoals")
+            .WithSummary("Lista las metas de ahorro")
+            .Produces<IReadOnlyList<SavingsGoalResponse>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized);
 
         g.MapPost("/{goalId:int}/contribute", async (int goalId, ContributeSavingsGoalRequest req, ClaimsPrincipal user, ISavingsGoalService svc, CancellationToken ct) =>
         {

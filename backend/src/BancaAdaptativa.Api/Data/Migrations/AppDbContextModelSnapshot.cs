@@ -728,6 +728,9 @@ namespace BancaAdaptativa.Api.Data.Migrations
                     b.Property<DateTime?>("ConfirmedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Currency")
                         .IsRequired()
                         .HasMaxLength(5)

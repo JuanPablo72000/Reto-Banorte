@@ -8,7 +8,7 @@ namespace BancaAdaptativa.Api.Services;
 public interface ISavingsGoalService
 {
     Task<SavingsGoalResponse> CreateAsync(int idUser, CreateSavingsGoalRequest req, CancellationToken ct = default);
-    Task<IReadOnlyList<SavingsGoalResponse>> ListAsync(int idUser, CancellationToken ct = default);
+    Task<IReadOnlyList<SavingsGoalResponse>> ListAsync(int idUser, string? status = null, CancellationToken ct = default);
     Task<SavingsGoalResponse> ContributeAsync(int idUser, int goalId, decimal amount, CancellationToken ct = default);
     Task<SavingsGoalResponse> SetStatusAsync(int idUser, int goalId, string status, CancellationToken ct = default);
     Task DeleteAsync(int idUser, int goalId, CancellationToken ct = default);
@@ -42,13 +42,16 @@ public class SavingsGoalService(AppDbContext db, TimeProvider timeProvider) : IS
         return Map(g);
     }
 
-    public async Task<IReadOnlyList<SavingsGoalResponse>> ListAsync(int idUser, CancellationToken ct = default) =>
-        await db.SavingsGoals.AsNoTracking().Where(g => g.IdUser == idUser)
-            .OrderBy(g => g.IdGoal)
+    public async Task<IReadOnlyList<SavingsGoalResponse>> ListAsync(int idUser, string? status = null, CancellationToken ct = default)
+    {
+        var q = db.SavingsGoals.AsNoTracking().Where(g => g.IdUser == idUser);
+        if (!string.IsNullOrWhiteSpace(status)) q = q.Where(g => g.Status == status);
+        return await q.OrderBy(g => g.IdGoal)
             .Select(g => new SavingsGoalResponse(g.IdGoal, g.Name, g.TargetAmount, g.CurrentAmount,
                 g.TargetAmount <= 0 ? 0 : Math.Round(g.CurrentAmount / g.TargetAmount * 100, 2),
                 g.TargetDate, g.Status, g.CreatedAt, g.UpdatedAt))
             .ToListAsync(ct);
+    }
 
     public async Task<SavingsGoalResponse> ContributeAsync(int idUser, int goalId, decimal amount, CancellationToken ct = default)
     {

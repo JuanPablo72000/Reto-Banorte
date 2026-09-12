@@ -87,13 +87,20 @@ dataRefs:
       - AccessibilityPanel
 
   accounts.list:
-    description: "Lista de cuentas del usuario."
+    description: "Lista de cuentas del usuario con filtros opcionales."
     operationId: getAccounts
     method: GET
     path: "/accounts"
     selector: "$"
     format: list
     sensitivity: medium
+    queryParams:
+      status:
+        type: string
+        description: "Filtro por estado: active, blocked, etc."
+      accountType:
+        type: string
+        description: "Filtro por tipo: debito, credito."
     uiHints:
       - AccountList
       - SelectAccount
@@ -128,7 +135,7 @@ dataRefs:
       - AccountDetail
 
   transactions.list:
-    description: "Movimientos de una cuenta."
+    description: "Movimientos de una cuenta con filtros por fecha, categoría, dirección y búsqueda."
     operationId: getAccountTransactions
     method: GET
     path: "/accounts/{accountId}/transactions"
@@ -140,11 +147,67 @@ dataRefs:
         type: integer
         required: true
         source: state.selectedAccountId
+    queryParams:
+      from:
+        type: date
+        description: "Fecha inicio (yyyy-MM-dd)."
+        source: state.selectedDateRange.from
+      to:
+        type: date
+        description: "Fecha fin (yyyy-MM-dd)."
+        source: state.selectedDateRange.to
+      category:
+        type: string
+        description: "Categoría libre heredada (super, nomina, etc.)."
+      expenseCategory:
+        type: string
+        description: "Código del catálogo ExpenseCategory (supermarket, gas, etc.)."
+      direction:
+        type: string
+        description: "credit | debit."
+      status:
+        type: string
+        description: "posted | pending."
+      search:
+        type: string
+        description: "Texto a buscar en descripción o referencia."
+      limit:
+        type: integer
+        description: "Máximo de resultados (1-100, default 50)."
+    uiHints:
+      - TransactionList
+
+  transactions.global:
+    description: "Búsqueda transversal de movimientos en todas las cuentas del usuario."
+    operationId: getAllTransactions
+    method: GET
+    path: "/me/transactions"
+    selector: "$"
+    format: list
+    sensitivity: medium
+    queryParams:
+      accountId:
+        type: integer
+        description: "Opcional: acotar a una cuenta."
+      from:
+        type: date
+      to:
+        type: date
+      expenseCategory:
+        type: string
+      direction:
+        type: string
+      status:
+        type: string
+      search:
+        type: string
+      limit:
+        type: integer
     uiHints:
       - TransactionList
 
   dailyBalances.list:
-    description: "Balances diarios de una cuenta."
+    description: "Balances diarios de una cuenta acotados por rango de fechas."
     operationId: getAccountDailyBalances
     method: GET
     path: "/accounts/{accountId}/daily-balances"
@@ -156,8 +219,39 @@ dataRefs:
         type: integer
         required: true
         source: state.selectedAccountId
+    queryParams:
+      from:
+        type: date
+        source: state.selectedDateRange.from
+      to:
+        type: date
+        source: state.selectedDateRange.to
     uiHints:
       - DailyBalanceChart
+
+  transfers.list:
+    description: "Historial de transferencias del usuario con filtros por estado, cuenta origen y fecha."
+    operationId: getTransfers
+    method: GET
+    path: "/transfers"
+    selector: "$"
+    format: list
+    sensitivity: high
+    queryParams:
+      status:
+        type: string
+        description: "pending | confirmed."
+      originAccountId:
+        type: integer
+        description: "Filtrar por cuenta origen."
+      from:
+        type: datetimeUtc
+      to:
+        type: datetimeUtc
+      limit:
+        type: integer
+    uiHints:
+      - TransferList
 
   transfer.detail:
     description: "Detalle de una transferencia."
@@ -176,18 +270,22 @@ dataRefs:
       - TransferSummary
 
   reconciliation.list:
-    description: "Lista de conciliaciones."
+    description: "Lista de conciliaciones con filtro opcional por estado."
     operationId: getReconciliation
     method: GET
     path: "/reconciliation"
     selector: "$"
     format: list
     sensitivity: medium
+    queryParams:
+      status:
+        type: string
+        description: "pending | matched."
     uiHints:
       - ReconciliationTable
 
   statements.list:
-    description: "Estados de cuenta mensuales pre-computados de una cuenta, por fecha de corte."
+    description: "Estados de cuenta mensuales pre-computados de una cuenta, por año, mes y estado."
     operationId: getAccountStatements
     method: GET
     path: "/accounts/{accountId}/statements"
@@ -199,6 +297,14 @@ dataRefs:
         type: integer
         required: true
         source: state.selectedAccountId
+    queryParams:
+      year:
+        type: integer
+      month:
+        type: integer
+      status:
+        type: string
+        description: "generated | archived."
     uiHints:
       - StatementList
       - StatementSummary
@@ -225,51 +331,76 @@ dataRefs:
       - ExpenseBreakdownChart
 
   expenseCategories.list:
-    description: "Catálogo de clasificaciones de gasto (gasolina, restaurantes, etc.)."
+    description: "Catálogo de clasificaciones de gasto con búsqueda por nombre o código."
     operationId: getExpenseCategories
     method: GET
     path: "/expense-categories"
     selector: "$"
     format: list
     sensitivity: low
+    queryParams:
+      search:
+        type: string
+        description: "Búsqueda parcial en nombre o código."
     uiHints:
       - CategoryList
 
   budgets.monthly:
-    description: "Resumen de presupuestos por categoría del mes."
+    description: "Resumen de presupuestos por categoría del mes con filtros opcionales."
     operationId: getMonthlyBudgets
     method: GET
     path: "/me/budgets/monthly"
     selector: "$"
     format: object
     sensitivity: medium
+    queryParams:
+      year:
+        type: integer
+        required: true
+      month:
+        type: integer
+        required: true
+      category:
+        type: string
+        description: "Código de categoría (supermarket, gas, etc.)."
+      status:
+        type: string
+        description: "active | exceeded."
     uiHints:
       - BudgetProgressCard
 
   savingsGoals.list:
-    description: "Metas de ahorro del usuario con su progreso."
+    description: "Metas de ahorro del usuario con su progreso y filtro por estado."
     operationId: getSavingsGoals
     method: GET
     path: "/me/savings-goals"
     selector: "$"
     format: list
     sensitivity: medium
+    queryParams:
+      status:
+        type: string
+        description: "active | paused | completed."
     uiHints:
       - SavingsGoalCard
 
   creditCards.list:
-    description: "Tarjetas de crédito del usuario."
+    description: "Tarjetas de crédito del usuario con filtro opcional por estado."
     operationId: getCreditCards
     method: GET
     path: "/me/credit-cards"
     selector: "$"
     format: list
     sensitivity: high
+    queryParams:
+      status:
+        type: string
+        description: "active | blocked."
     uiHints:
       - CreditCardSummary
 
   creditCard.statements:
-    description: "Estados de cuenta de una tarjeta de crédito (interés, pago mínimo, vencimiento)."
+    description: "Estados de cuenta de una tarjeta de crédito (interés, pago mínimo, vencimiento) con filtros por año y mes."
     operationId: getCreditCardStatements
     method: GET
     path: "/me/credit-cards/{cardId}/statements"
@@ -281,6 +412,11 @@ dataRefs:
         type: integer
         required: true
         source: state.selectedCardId
+    queryParams:
+      year:
+        type: integer
+      month:
+        type: integer
     uiHints:
       - CreditCardSummary
       - StatementSummary
