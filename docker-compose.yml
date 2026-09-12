@@ -4,7 +4,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_ENVIRONMENT: Staging
       # SQLite persistido en el volumen sqlite-data.
       ConnectionStrings__Default: "Data Source=/data/app.db"
       # Secreto de firma JWT (mín. 32 chars). Definir en .env (ver .env.example).
