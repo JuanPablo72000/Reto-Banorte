@@ -9,7 +9,7 @@
       "Data/AppDbContext.cs",
       "Data/DbSeeder.cs"
     ],
-    "ignore-mutations": ["LinqMethod"],
+    "ignore-mutations": ["Linq"],
     "concurrency": 4,
     "coverage-analysis": "perTest"
   }
