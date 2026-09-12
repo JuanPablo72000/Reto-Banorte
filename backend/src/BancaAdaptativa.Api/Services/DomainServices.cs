@@ -80,7 +80,7 @@ public class AccountQueryService(AppDbContext db) : IAccountQueryService
         if (!string.IsNullOrWhiteSpace(status)) q = q.Where(t => t.Status == status);
         if (!string.IsNullOrWhiteSpace(search)) q = q.Where(t => t.Description.Contains(search) || t.Reference.Contains(search));
         return await q.OrderByDescending(t => t.Date).ThenByDescending(t => t.IdTransaction).Take(limit)
-            .Select(t => new TransactionResponse(t.IdTransaction, t.Date, t.Amount, t.Direction, t.Category, t.Description, t.Status, t.Reference))
+            .Select(t => new TransactionResponse(t.IdTransaction, t.Date, t.Amount, t.Direction, t.Category, t.Description, t.Status, t.Reference, t.IdExpenseCategory))
             .ToListAsync(ct);
     }
 

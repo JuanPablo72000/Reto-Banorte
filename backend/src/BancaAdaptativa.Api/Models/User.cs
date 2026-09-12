@@ -34,4 +34,7 @@ public class User
     public ICollection<DetectedPreference> DetectedPreferences { get; set; } = new List<DetectedPreference>();
     public ICollection<Transfer> Transfers { get; set; } = new List<Transfer>();
     public ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
+    public ICollection<Budget> Budgets { get; set; } = new List<Budget>();
+    public ICollection<SavingsGoal> SavingsGoals { get; set; } = new List<SavingsGoal>();
+    public ICollection<CreditCard> CreditCards { get; set; } = new List<CreditCard>();
 }
