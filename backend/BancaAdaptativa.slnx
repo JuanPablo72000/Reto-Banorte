@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BancaAdaptativa.Api/BancaAdaptativa.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BancaAdaptativa.Api.Tests/BancaAdaptativa.Api.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -11,7 +11,7 @@ reset:
 	docker compose up --build
 
 seed:
-	docker compose run --rm seed
+	@echo "El seed es automatico: la API aplica migraciones e inserta datos demo al arrancar."
 
 logs:
 	docker compose logs -f

@@ -14,12 +14,26 @@ out/
 dist/
 build/
 
+# .NET (evita saturar el repo con artefactos de compilación)
+[Bb]in/
+[Oo]bj/
+[Tt]est[Rr]esult/
+[Bb]uild[Ll]og.*
+*.nupkg
+*.snupkg
+publish/
+*.user
+*.suo
+.ionide/
+
 # Environment
 .env
 .env.local
 
 # SQLite
 *.db
+*-shm
+*-wal
 *.sqlite
 *.sqlite3
 
