@@ -148,4 +148,147 @@ public class TransferServiceTests
 
         Assert.Equal("app", conf.Method); // mata: quitar default IsNullOrWhiteSpace
     }
+
+    [Fact] // mata #923: t.IdempotencyKey != key
+    public async Task Create_KeysDistintas_CreanTransfersDistintos()
+    {
+        var (t, uid, acc) = await ArrangeAsync();
+        using var _ = t;
+        var svc = new TransferService(t.Db, t.Time);
+
+        var a = await svc.CreateAsync(uid, Req(acc, "key-A"));
+        var b = await svc.CreateAsync(uid, Req(acc, "key-B"));
+
+        Assert.NotEqual(a.IdTransfer, b.IdTransfer);
+    }
+
+    [Fact] // mata #930: ORIGIN_ACCOUNT_NOT_FOUND -> ""
+    public async Task Create_CuentaAjena_MensajeOriginAccountNotFound()
+    {
+        var (t, uid, _) = await ArrangeAsync();
+        using var _2 = t;
+        var svc = new TransferService(t.Db, t.Time);
+
+        var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            svc.CreateAsync(uid, Req(9999, "otra")));
+        Assert.Equal("ORIGIN_ACCOUNT_NOT_FOUND", ex.Message);
+    }
+
+    [Fact] // mata #932/#934-936 y #937: currency en blanco -> MXN
+    public async Task Create_CurrencyVacia_UsaDefaultMXN()
+    {
+        var (t, uid, acc) = await ArrangeAsync();
+        using var _ = t;
+        var svc = new TransferService(t.Db, t.Time);
+
+        var r = await svc.CreateAsync(uid, new CreateTransferRequest(
+            acc, "D", "****9", 100m, "   ", "C", "cur-blank"));
+
+        Assert.Equal("MXN", r.Currency);
+    }
+
+    [Fact] // mata #932/#933: true->MXN / false->ToUpper pierden el valor real
+    public async Task Create_CurrencyUsd_NormalizaAUSD()
+    {
+        var (t, uid, acc) = await ArrangeAsync();
+        using var _ = t;
+        var svc = new TransferService(t.Db, t.Time);
+
+        var r = await svc.CreateAsync(uid, new CreateTransferRequest(
+            acc, "D", "****9", 100m, "usd", "C", "cur-usd"));
+
+        Assert.Equal("USD", r.Currency);
+    }
+
+    [Fact] // mata #938 (?? string.Empty) y #939 (string.Empty -> basura)
+    public async Task Create_Concept_PersisteValorYNuloVaAVacio()
+    {
+        var (t, uid, acc) = await ArrangeAsync();
+        using var _ = t;
+        var svc = new TransferService(t.Db, t.Time);
+
+        var conTexto = await svc.CreateAsync(uid, new CreateTransferRequest(
+            acc, "D", "****9", 100m, "MXN", "Apoyo quincena", "conc-1"));
+        Assert.Equal("Apoyo quincena", conTexto.Concept);
+
+        var conNulo = await svc.CreateAsync(uid, new CreateTransferRequest(
+            acc, "D", "****9", 100m, "MXN", null!, "conc-2"));
+        Assert.Equal(string.Empty, conNulo.Concept);
+    }
+
+    [Fact] // mata #946-949 y #950: GetAsync sin cobertura
+    public async Task Get_Ok_AjenoYMisingLanzanTransferNotFound()
+    {
+        var (t, uid, acc) = await ArrangeAsync();
+        using var _ = t;
+        var svc = new TransferService(t.Db, t.Time);
+        var created = await svc.CreateAsync(uid, Req(acc, "g-1"));
+
+        var got = await svc.GetAsync(uid, created.IdTransfer);
+        Assert.Equal(created.IdTransfer, got.IdTransfer);
+
+        var exAjeno = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            svc.GetAsync(9999, created.IdTransfer));
+        Assert.Equal("TRANSFER_NOT_FOUND", exAjeno.Message);
+
+        var exMissing = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            svc.GetAsync(uid, 999999));
+        Assert.Equal("TRANSFER_NOT_FOUND", exMissing.Message);
+    }
+
+    [Fact] // mata #952 (|| en lookup de Confirm) y #955 (mensaje)
+    public async Task Confirm_UsuarioAjeno_LanzaTransferNotFound()
+    {
+        var (t, uid, acc) = await ArrangeAsync();
+        using var _ = t;
+        var svc = new TransferService(t.Db, t.Time);
+        var created = await svc.CreateAsync(uid, Req(acc, "aj-1"));
+
+        var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            svc.ConfirmAsync(9999, created.IdTransfer, "app"));
+        Assert.Equal("TRANSFER_NOT_FOUND", ex.Message);
+    }
+
+    [Fact] // mata #959: TRANSFER_NOT_PENDING -> ""
+    public async Task Confirm_DobleConfirm_MensajeTransferNotPending()
+    {
+        var (t, uid, acc) = await ArrangeAsync();
+        using var _ = t;
+        var svc = new TransferService(t.Db, t.Time);
+        var created = await svc.CreateAsync(uid, Req(acc, "d-2"));
+        await svc.ConfirmAsync(uid, created.IdTransfer, "app");
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.ConfirmAsync(uid, created.IdTransfer, "app"));
+        Assert.Equal("TRANSFER_NOT_PENDING", ex.Message);
+    }
+
+    [Fact] // mata #977: >= 10000 (frontera exacta -> low)
+    public async Task Confirm_MontoExacto10000_EsLow()
+    {
+        var (t, uid, acc) = await ArrangeAsync();
+        using var _ = t;
+        var svc = new TransferService(t.Db, t.Time);
+        var created = await svc.CreateAsync(uid, new CreateTransferRequest(
+            acc, "D", "****9", 10000m, "MXN", "", "edge-10k"));
+
+        var (tr, _) = await svc.ConfirmAsync(uid, created.IdTransfer, "app");
+
+        Assert.Equal("low", t.Db.AuditLogs.Single(a => a.Resource == $"transfer:{tr.IdTransfer}").RiskLevel);
+    }
+
+    [Fact] // mata #980: RedactedPayload -> $""
+    public async Task Confirm_AuditLog_ContienePayloadRedactado()
+    {
+        var (t, uid, acc) = await ArrangeAsync();
+        using var _ = t;
+        var svc = new TransferService(t.Db, t.Time);
+        var created = await svc.CreateAsync(uid, Req(acc, "pl-1"));
+
+        var (tr, _) = await svc.ConfirmAsync(uid, created.IdTransfer, "app");
+
+        var payload = t.Db.AuditLogs.Single(a => a.Resource == $"transfer:{tr.IdTransfer}").RedactedPayload;
+        Assert.Contains("****5678", payload);
+        Assert.Contains("2000", payload);
+    }
 }
