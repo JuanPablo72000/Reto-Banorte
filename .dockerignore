@@ -1,0 +1,35 @@
+# Contexto del frontend (docker-compose usa la raíz del repo como context).
+# Excluir todo lo que no se necesita en la imagen para acelerar el build.
+.git/
+.github/
+.idea/
+.vs/
+docs/
+presentation/
+scripts/
+tests/
+contracts/
+.local_memory/
+*.log
+hs_err_pid*
+
+# Node / Next
+**/node_modules/
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
+
+# .NET (artefactos locales de Windows)
+**/bin/
+**/obj/
+**/TestResults/
+backend/data/
+
+# Python
+mcp/.venv/
+mcp/.local_memory/
+**/__pycache__/
+*.pyc
+
+# Entorno
+.env
+mcp/.env

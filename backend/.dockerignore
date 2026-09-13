@@ -1,0 +1,11 @@
+# Artefactos de build locales (Windows): si entran a la imagen, el
+# project.assets.json local pisa el restore de Linux y rompe
+# `dotnet publish --no-restore` (fallback folders con rutas C:\...).
+**/bin/
+**/obj/
+**/TestResults/
+data/
+*.user
+*.suo
+.vs/
+.idea/
