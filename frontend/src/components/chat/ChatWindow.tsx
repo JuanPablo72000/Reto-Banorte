@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, FormEvent } from "react";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
+import { useState } from "react";
 import { ErrorState } from "@/components/states/ErrorState";
+import { ChatComposer } from "./ChatComposer";
 import { ChatSkeleton } from "./ChatSkeleton";
 import { PlanRenderer } from "./PlanRenderer";
 import type { ActionPlanUI, ChatContext, SuggestedAction } from "@/lib/types/action-plan";
@@ -13,7 +12,6 @@ const CONTEXTO_BASE: ChatContext = { id_user: 1, id_account: 1 };
 
 export function ChatWindow() {
     const [plan, setPlan] = useState<ActionPlanUI | null>(null);
-    const [draft, setDraft] = useState("");
     const [cargando, setCargando] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [ultimoMensaje, setUltimoMensaje] = useState("");
@@ -41,13 +39,6 @@ export function ChatWindow() {
         }
     }
 
-    function handleSend(e: FormEvent) {
-        e.preventDefault();
-        if (!draft.trim() || cargando) return;
-        void enviar(draft.trim());
-        setDraft("");
-    }
-
     function handleSugerencia(a: SuggestedAction) {
         if (cargando) return;
         void enviar(a.label);
@@ -73,20 +64,9 @@ export function ChatWindow() {
                 )}
             </div>
 
-            <form
-                onSubmit={handleSend}
-                className="flex w-full max-w-2xl items-end gap-2 border-t border-[var(--color-border)] pt-4"
-            >
-                <div className="flex-1">
-                    <Input
-                        label="Mensaje"
-                        value={draft}
-                        onChange={(e) => setDraft(e.target.value)}
-                        placeholder="Escribe tu mensaje..."
-                    />
-                </div>
-                <Button type="submit">Enviar</Button>
-            </form>
+            <div className="w-full max-w-2xl border-t border-[var(--color-border)] pt-4">
+                <ChatComposer onSend={(texto) => enviar(texto)} sending={cargando} />
+            </div>
         </div>
     );
 }

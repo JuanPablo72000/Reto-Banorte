@@ -1,0 +1,5 @@
+{
+  "executionEnvironments": [{ "root": "app" }],
+  "extraPaths": ["."],
+  "typeCheckingMode": "basic"
+}

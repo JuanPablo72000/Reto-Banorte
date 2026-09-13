@@ -1,0 +1,5 @@
+{
+  "executionEnvironments": [{ "root": "mcp/app" }],
+  "extraPaths": ["mcp"],
+  "typeCheckingMode": "basic"
+}

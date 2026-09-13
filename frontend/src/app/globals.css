@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 /* Paleta Normal (marca) */
 [data-palette="normal"] {
   --color-accent: #EB0029;
@@ -77,6 +79,102 @@ html {
   animation-duration: 0.01ms !important;
   transition-duration: 0.01ms !important;
 }
+
+/* ---- Tokens estructurales (de Qwen; paletas intactas) ---- */
+:root {
+  --color-surface-3: #E9ECEF;
+  --color-accent-hover: #C40023;
+  --color-overlay: rgb(30 34 41 / 0.55);
+  --color-skeleton: #E3E6EA;
+  --color-border-subtle: #D8DBDD;
+  --shadow-1: 0 1px 2px rgb(16 20 26 / 0.08), 0 2px 8px rgb(16 20 26 / 0.06);
+  --shadow-2: 0 4px 12px rgb(16 20 26 / 0.14), 0 10px 28px rgb(16 20 26 / 0.12);
+  --anim-duracion: 240ms;
+  --anim-stagger: 60ms;
+  --pad-card: 16px;
+  --gap-stack: 12px;
+  --gap-item: 10px;
+  --text-body: 1rem;
+  --text-titulo: 1.5rem;
+}
+
+[data-palette="mono"] {
+  --color-surface-3: #31363E;
+  --color-accent-hover: #00B3B3;
+  --color-overlay: rgb(0 0 0 / 0.6);
+  --color-skeleton: #2A2F36;
+  --color-border-subtle: #3A3F46;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-2: 0 6px 18px rgb(0 0 0 / 0.6);
+}
+
+/* Modo oscuro (propuesto por Qwen, adaptado a estos tokens). */
+[data-theme="dark"] {
+  --color-accent: #FF7D90;
+  --color-accent-hover: #FF97A6;
+  --color-accent-text: #1E2229;
+  --color-surface: #14171C;
+  --color-surface-2: #1E2229;
+  --color-surface-3: #262B33;
+  --color-text: #F8F9FA;
+  --color-text-muted: #B9BEC6;
+  --color-border: #8A9099;
+  --color-border-subtle: #3A3F46;
+  --color-overlay: rgb(0 0 0 / 0.6);
+  --color-skeleton: #2A2F36;
+  --color-success-bg: #0E2A1D;
+  --color-success-text: #7FE0A8;
+  --color-warning-bg: #2E2212;
+  --color-warning-text: #FFC98A;
+  --color-danger-bg: #33141A;
+  --color-danger-text: #FF9BAA;
+  --color-info-bg: #0E2A2E;
+  --color-info-text: #7FE3E3;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-2: 0 6px 18px rgb(0 0 0 / 0.6);
+}
+
+/* ---- Tamaños (size sm/md/lg de tamanoEfectivo(); target NUNCA < 44px) ---- */
+:root, [data-size="md"] { --target-min: 48px; }
+[data-size="sm"] { --target-min: 44px; }
+[data-size="lg"] { --target-min: 56px; }
+
+/* ---- Modos de texto que manda la IA (data-text-mode) ---- */
+[data-text-mode="senior"] { --text-body: 1.125rem; --text-titulo: 1.875rem; }
+[data-text-mode="visual_impairment"] { --color-text-muted: var(--color-text); }
+[data-text-mode="visual_impairment"] :focus-visible { outline-width: 4px; }
+[data-text-mode="visual_impairment"] a { text-decoration: underline; }
+[data-text-mode="cognitive_impairment"] { --gap-stack: 16px; line-height: 1.8; letter-spacing: 0.01em; }
+
+/* ---- Animaciones por token (animation del plan + stagger por orden) ---- */
+@keyframes anim-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes anim-slide { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+@keyframes anim-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.04); opacity: 0.85; } }
+@keyframes anim-shimmer { to { transform: translateX(100%); } }
+[data-animation="fade"] { animation: anim-fade var(--anim-duracion) ease-out both; animation-delay: calc(var(--orden, 0) * var(--anim-stagger)); }
+[data-animation="slide"] { animation: anim-slide var(--anim-duracion) ease-out both; animation-delay: calc(var(--orden, 0) * var(--anim-stagger)); }
+[data-animation="pulse"] { animation: anim-pulse calc(var(--anim-duracion) * 2) ease-in-out both; animation-iteration-count: 3; animation-delay: calc(var(--orden, 0) * var(--anim-stagger)); }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-animation], .skeleton::after { animation: none !important; }
+  * { transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+[data-reduced-motion="true"] [data-animation], [data-reduced-motion="true"] .skeleton::after { animation: none !important; }
+
+/* ---- Doble vista tabla|tarjetas (componentes con .vista-tabla/.vista-cards) ---- */
+.vista-tabla { display: none; }
+[data-vista="tabla"] .vista-tabla { display: block; }
+[data-vista="tabla"] .vista-cards { display: none; }
+[data-vista="tarjetas"] .vista-cards { display: flex; }
+
+/* ---- Skeletons ---- */
+.skeleton { position: relative; overflow: hidden; background: var(--color-skeleton); }
+.skeleton::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.35), transparent);
+  animation: anim-shimmer calc(var(--anim-duracion) * 6) linear infinite; }
+
+/* ---- Foco visible global ---- */
+:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 2px; border-radius: inherit; }
 
 /* Densidad del plan (ViewControls en vivo): separaciones. */
 :root,
