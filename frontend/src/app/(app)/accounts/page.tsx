@@ -108,10 +108,10 @@ export default function AccountsPage() {
                 id: m.id,
                 alias: m.label,
                 numero: m.accountNumber,
-                tipo: m.id === "acc-3" ? "credito" : "debito",
+                tipo: m.id === "acc-2" ? "ahorro" : "debito",
                 currency: m.currency,
                 balance: m.currentBalance,
-                status: m.id === "acc-3" ? "blocked" : "active",
+                status: m.id === "acc-4" ? "blocked" : "active",
             }))
           : [];
 

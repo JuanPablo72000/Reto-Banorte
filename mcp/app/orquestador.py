@@ -30,6 +30,7 @@ from typing import Optional
 
 from app import tools
 from app.ia.planner_con_memoria import PlannerConMemoria
+from app.ia.visualizaciones import construir_visualizaciones
 from app.schemas.schemas import (
     DEFAULT_UI_HINT_BY_TOOL,
     AccessibilityMetadata,
@@ -171,6 +172,19 @@ async def ejecutar_turno(
             continue
         salidas.append(await _ejecutar_step(step.tool, args))
 
+    # Visualizaciones: las de la IA primero (p. ej. bank_card) + las
+    # deterministas construidas desde los resultados REALES de los steps
+    # (ver app/ia/visualizaciones.py). Dedupe por título; serie temporal
+    # ordenada por fecha y categorías por monto dentro de cada gráfica.
+    vis_ia = [v for v in (getattr(plan, "visualizations", None) or []) if isinstance(v, dict)]
+    pasos_ejecutados = [
+        (step.tool, step.arguments.model_dump(), salida)
+        for step, salida in zip(plan.steps, salidas)
+    ]
+    vis_datos = construir_visualizaciones(pasos_ejecutados)
+    titulos_ia = {v.get("title") for v in vis_ia}
+    visualizaciones = vis_ia + [v for v in vis_datos if v.get("title") not in titulos_ia]
+
     return {
         "intent": plan.intent,
         "response_to_user": plan.response_to_user,
@@ -192,6 +206,7 @@ async def ejecutar_turno(
         "contextual_tips": plan.contextual_tips,
         "accessibility_recommendations": plan.accessibility_recommendations,
         "visual_theme": plan.visual_theme,
+        "visualizations": visualizaciones,
         "depuracion": {
             "modelo": planner.planner.last_model,
             "correcciones": correcciones,

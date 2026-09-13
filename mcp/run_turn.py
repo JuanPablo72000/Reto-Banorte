@@ -37,6 +37,24 @@ async def main() -> int:
     except json.JSONDecodeError as exc:
         print(json.dumps({"error": f"stdin no es JSON válido: {exc}"}), flush=True)
         return 2
+
+    id_user = int(pedido.get("id_user", 1))
+
+    # Acciones de mantenimiento que NO llaman a la IA (baratas, sin token
+    # de Groq). Hoy: borrar la memoria del usuario desde el panel de
+    # accesibilidad del frontend.
+    accion = str(pedido.get("accion") or "").strip()
+    if accion == "reset_memoria":
+        from app.ia.user_memory import DEFAULT_MEMORY_PATH, MemoriaUsuarioStore
+
+        store = MemoriaUsuarioStore(DEFAULT_MEMORY_PATH)
+        await store.reset(id_user)
+        print(json.dumps({"ok": True, "memoria_borrada": True, "id_user": id_user}), flush=True)
+        return 0
+    if accion:
+        print(json.dumps({"error": f"accion desconocida: {accion!r}"}), flush=True)
+        return 2
+
     mensaje = (pedido.get("mensaje") or "").strip()
     if not mensaje:
         print(json.dumps({"error": "falta 'mensaje' en el pedido"}), flush=True)
@@ -45,7 +63,7 @@ async def main() -> int:
         ui_json = await ejecutar_turno(
             mensaje,
             contexto=pedido.get("contexto") or {},
-            id_user=int(pedido.get("id_user", 1)),
+            id_user=id_user,
         )
     except Exception as exc:  # noqa: BLE001 — el puente nunca muere sin JSON
         logger.exception("Turno fallido")

@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useA11y, type Palette } from "@/components/accessibility/A11yProvider";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { useVista } from "@/components/providers/VistaProvider";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
@@ -154,13 +155,41 @@ export function AccessibilityPanel({ abierto, onCerrar }: { abierto: boolean; on
 export function ControlesAccesibilidad() {
     const a11y = useA11y();
     const { vista, setVista } = useVista();
+    const { session } = useAuth();
     const [plantilla, setPlantilla] = useState<AccessibilityTemplate>("default");
+    const [memoriaEstado, setMemoriaEstado] = useState<"idle" | "confirmando" | "borrando" | "ok" | "error">("idle");
+    const [ajustesOk, setAjustesOk] = useState(false);
 
     function cambiarVista(parche: Partial<VistaEnVivo>) {
         setVista((prev) => ({ ...prev, ...parche }));
         if (parche.contraste) {
             a11y.setContrast(parche.contraste === "high" ? "high" : "normal");
         }
+    }
+
+    async function borrarMemoria() {
+        setMemoriaEstado("borrando");
+        try {
+            const res = await fetch("/api/memory/reset", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id_user: session?.user.id ?? 1 }),
+            });
+            setMemoriaEstado(res.ok ? "ok" : "error");
+        } catch {
+            setMemoriaEstado("error");
+        }
+    }
+
+    function restablecerAjustes() {
+        a11y.setFontScale(1);
+        a11y.setContrast("normal");
+        a11y.setPalette("normal");
+        a11y.setTheme("light");
+        a11y.setReducedMotion(false);
+        setPlantilla("default");
+        setVista({ tamano: "auto", vista: "auto", contraste: "auto" });
+        setAjustesOk(true);
     }
 
     return (
@@ -278,6 +307,73 @@ export function ControlesAccesibilidad() {
                                 { valor: "high", texto: "Alto" },
                             ]}
                         />
+                    </Seccion>
+
+                    <Seccion titulo="Memoria y datos guardados">
+                        <p className="text-sm text-[var(--color-text-muted)]">
+                            El asistente recuerda tus ajustes e intenciones entre conversaciones.
+                            Aquí puedes borrar esa memoria o restablecer tus preferencias.
+                        </p>
+
+                        {memoriaEstado === "idle" || memoriaEstado === "error" ? (
+                            <button
+                                type="button"
+                                onClick={() => setMemoriaEstado("confirmando")}
+                                className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-danger-bg)] px-3 text-sm font-medium text-[var(--color-danger-bg)] transition-colors hover:bg-[var(--color-surface-2)] motion-reduce:transition-none"
+                            >
+                                <Icon name="close" size={16} />
+                                Borrar memoria del asistente
+                            </button>
+                        ) : memoriaEstado === "confirmando" ? (
+                            <div className="flex flex-col gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+                                <p className="text-sm font-medium text-[var(--color-text)]">
+                                    ¿Seguro? Se olvidará lo que el asistente aprendió de ti.
+                                </p>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => void borrarMemoria()}
+                                        className="flex min-h-[44px] flex-1 items-center justify-center rounded-lg bg-[var(--color-danger-bg)] px-3 text-sm font-semibold text-[var(--color-danger-text)]"
+                                    >
+                                        Sí, borrar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMemoriaEstado("idle")}
+                                        className="flex min-h-[44px] flex-1 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-text)]"
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
+                            </div>
+                        ) : memoriaEstado === "borrando" ? (
+                            <p role="status" className="flex min-h-[44px] items-center gap-2 text-sm text-[var(--color-text-muted)]">
+                                <Icon name="clock" size={16} className="ui-spin" /> Borrando memoria…
+                            </p>
+                        ) : (
+                            <p role="status" className="flex min-h-[44px] items-center gap-2 rounded-lg bg-[var(--color-success-bg)] px-3 text-sm font-medium text-[var(--color-success-text)]">
+                                <Icon name="check" size={16} /> Memoria del asistente borrada
+                            </p>
+                        )}
+                        {memoriaEstado === "error" && (
+                            <p role="alert" className="text-sm text-[var(--color-danger-bg)]">
+                                No se pudo borrar (¿el MCP está apagado?). Intenta de nuevo.
+                            </p>
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={restablecerAjustes}
+                            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-2)] motion-reduce:transition-none"
+                        >
+                            <Icon name="refresh" size={16} />
+                            Restablecer mis ajustes de accesibilidad
+                        </button>
+                        {ajustesOk && (
+                            <p role="status" className="text-sm text-[var(--color-text-muted)]">
+                                Ajustes restablecidos a los valores predeterminados.
+                            </p>
+                        )}
                     </Seccion>
         </>
     );

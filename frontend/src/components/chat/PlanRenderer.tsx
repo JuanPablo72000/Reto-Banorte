@@ -35,7 +35,7 @@ import type {
     ToolName,
     Visualization,
 } from "@/lib/types/action-plan";
-import { BarChart, LineChart, DonutChart } from "@/components/ui/Chart";
+import { BarChart, LineChart, DonutChart, AreaChart } from "@/components/ui/Chart";
 import { Card } from "@/components/ui/Card";
 import BankCard from "../BankCard";
 
@@ -168,7 +168,7 @@ export function PlanRenderer({ plan, onSugerencia, onConfirmar }: PlanRendererPr
                   )
                 : [];
             return (
-                <div key={`viz-${idx}`} role="figure" aria-label={viz.accessibility_label} className="mb-4">
+                <div key={`viz-${idx}`} role="figure" aria-label={viz.accessibility_label} className="ui-rise lg:col-span-2">
                     <h3 className="sr-only">{viz.title}</h3>
                     <p className="sr-only">{viz.description}</p>
                     <BankCard
@@ -195,20 +195,27 @@ export function PlanRenderer({ plan, onSugerencia, onConfirmar }: PlanRendererPr
             return fila;
         });
         const claves = Object.keys(filas[0] ?? {});
-        const dataKey = claves.find((k) => k !== "name" && k !== "label" && k !== "fecha") ?? "value";
         const nameKey =
-            claves.find((k) => k === "name" || k === "label" || k === "categoria") ?? claves[0] ?? "name";
+            claves.find((k) => k === "name" || k === "label" || k === "categoria" || k === "fecha" || k === "alias") ?? claves[0] ?? "name";
+        const dataKey = claves.find((k) => k !== nameKey && typeof filas[0]?.[k] === "number");
         const esDona = viz.type === "pie" || viz.type === "donut";
-        const ChartComponent = viz.type === "line" ? LineChart : BarChart;
+        const ChartComponent =
+            viz.type === "line" ? LineChart : viz.type === "area" ? AreaChart : BarChart;
 
         return (
-            <Card key={`viz-${idx}`} className="mb-4 p-4" role="figure" aria-label={viz.accessibility_label}>
+            <Card
+                key={`viz-${idx}`}
+                className={`ui-rise card-hover p-4 ${esDona ? "lg:col-span-2" : ""}`}
+                style={{ "--orden": idx + 1 } as React.CSSProperties}
+                role="figure"
+                aria-label={viz.accessibility_label}
+            >
                 <h3 className="mb-2 text-lg font-semibold text-[var(--color-text)]">{viz.title}</h3>
                 <p className="mb-4 text-sm text-[var(--color-text-muted)]">{viz.description}</p>
                 {esDona ? (
-                    <DonutChart data={filas} nameKey={nameKey} valueKey={dataKey} height={280} />
+                    <DonutChart data={filas} nameKey={nameKey} valueKey={dataKey ?? "value"} height={280} />
                 ) : (
-                    <ChartComponent data={filas} xKey={nameKey} yKey={dataKey} height={280} />
+                    <ChartComponent data={filas} xKey={nameKey} height={280} />
                 )}
                 <span className="sr-only">{viz.accessibility_label}</span>
             </Card>
@@ -235,7 +242,7 @@ export function PlanRenderer({ plan, onSugerencia, onConfirmar }: PlanRendererPr
             <PlanLayout grupos={grupos} renderStep={renderStep} vista={vista} />
 
             {plan.visualizations && plan.visualizations.length > 0 && (
-                <section aria-label="Visualizaciones" className="mt-4">
+                <section aria-label="Visualizaciones" className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
                     {plan.visualizations.map((viz, idx) => renderVisualization(viz, idx))}
                 </section>
             )}
