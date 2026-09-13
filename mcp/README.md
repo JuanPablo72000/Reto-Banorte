@@ -1,67 +1,37 @@
-# MCP + IA — Guillermo
+# MCP + IA — Cerebro del proyecto
 
-Servidor MCP y planificador de IA (DeepSeek+Gemini) del proyecto **Banca Personal
-Adaptativa**, ya migrado para trabajar con IDs enteros reales de
-`backend/src/BancaAdaptativa.Api` (Pablo) en vez de los placeholders de
-texto de la versión anterior (previa a que existiera el backend real).
+Planificador de IA (Groq + Gemini) y servidor MCP de **Banca Personal Adaptativa**. Recibe un mensaje en lenguaje natural, arma un plan, ejecuta las tools contra la API real (con fallback a mocks) y devuelve el JSON de interfaz que renderiza el frontend — **incluidas las gráficas**.
 
-## Estructura
+## Cómo funciona un turno
 
 ```
-mcp/
-├── app/
-│   ├── schemas/schemas.py     # Modelos Pydantic == DTOs reales (IdUser, IdAccount...)
-│   ├── ia/
-│   │   ├── ia_client.py       # PlannerIA: genera el ActionPlan (IDs int o null)
-│   │   ├── plan_normalizer.py # Corrige typos/placeholders inválidos antes de validar
-│   │   └── contract_catalog.py# Carga y valida contra contracts/a2ui/a2ui-mcp-contract.yaml
-│   ├── integration/api_client.py # Cliente HTTP real (Cain) contra BancaAdaptativa.Api
-│   ├── placeholders/mock_data.py # Mocks alineados 1:1 al seed de Pablo (DbSeeder.cs)
-│   ├── tools/tools.py         # Las 8 tools de datos + planificar_accion (funciones puras)
-│   ├── server/mcp_server.py   # Registra las tools con FastMCP (@mcp.tool)
-│   └── logging_config.py      # Logging a stderr (obligatorio: stdio usa stdout)
-├── mcp_client.py               # Cliente de prueba end-to-end vía protocolo MCP
-├── test_local.py               # Prueba PlannerIA directo, sin MCP
-├── requirements.txt
-└── .env.example
+mensaje ──▶ PlannerConMemoria ──▶ orquestador ──▶ JSON de interfaz
+            (IA + memoria)        ejecuta steps   (texto + tablas +
+                                   (API/mock)     gráficas + sugerencias)
 ```
 
-## Usuario/cuenta semilla (para pruebas)
+- `run_turn.py`: puente de un solo disparo para el frontend (stdin JSON → stdout JSON). Además de turnos acepta la acción `reset_memoria` (borra la memoria del usuario sin llamar a la IA).
+- `app/orquestador.py:ejecutar_turno()`: pide el plan, respeta confirmaciones (`prepare/confirm_transfer` quedan `pendiente_confirmacion` sin `confirmado=True`), ejecuta cada step, fuerza `accion_directa` de botones y arma el JSON final con `visualizations`.
+- `app/ia/ia_client.py` (`PlannerIA`): genera el `ActionPlan` (intención, steps, sugerencias, plantilla de accesibilidad, visualizaciones libres).
+- `app/ia/visualizaciones.py`: **gráficas deterministas desde los resultados reales** (no dependen de la IA): evolución del saldo (área) e ingresos vs gastos (barras) con el rango de fechas en el título, dona de gastos por categoría, barras multi-serie (presupuesto vs gasto, usado vs disponible), progreso de metas, transferencias por mes, créditos vs cargos y conciliación. Ordenadas (tiempo ascendente, categorías descendente), máx. 4 por turno, con `accessibility_label` completo.
+- `app/ia/user_memory.py`: memoria por `id_user` (plantilla de accesibilidad + historial, clics, últimos 10 intents, últimos mensajes y notas). Persiste en `.local_memory/user_memory.json`; `reset(id)` la borra.
+- `app/tools/tools.py`: **20 tools** (cuentas, movimientos, saldos diarios, transferencias preparar/confirmar, conciliación, statements, categorías de gasto, presupuestos, metas, tarjetas) con fallback automático API → mock.
+- `app/placeholders/mock_data.py`: espejo del seed rico del backend — **4 cuentas** ($164,678.54 MXN), 3 tarjetas, 5 metas, 6 presupuestos, 10 transferencias, series de 30 días coherentes (saldo = cierre de la serie).
+- `app/server/mcp_server.py`: expone las tools por protocolo MCP (stdio o `MCP_TRANSPORT=http` en `MCP_PORT` 8080).
 
-Igual que `backend/src/BancaAdaptativa.Api/Data/DbSeeder.cs`:
+## Usuario demo (igual que el backend)
 
-- `id_user = 1` — demo@banorte.mx — perfil con discapacidad visual
-- `id_account = 1` — cuenta "Nómina" ****1234 — saldo 25,400.50 MXN
-- `id_transfer = 1` — $2,000 MXN a "Mamá" (****5678), status `pending`
+`id_user = 1` — `demo@banorte.mx` — perfil con discapacidad visual · `id_account = 1` — "Nómina" ****1234 · transferencia pendiente clásica: $2,000 a "Mamá" (****5678).
 
 ## Cómo correr
 
 ```bash
 cd mcp
-python -m venv venv && source venv/bin/activate   # o venv\Scripts\activate en Windows
+python -m venv .venv && .\.venv\Scripts\activate   # Windows (o source .venv/bin/activate)
 pip install -r requirements.txt
-cp .env.example .env   # y pon tu DEEPSEEK_API_KEY real
+cp .env.example .env   # pon GROQ_API_KEY (o GEMINI_API_KEY) y BANORTE_API_BASE_URL
 
-# Prueba solo el planificador de IA (sin protocolo MCP):
-python test_local.py
-
-# Prueba el servidor completo vía protocolo MCP real:
-python mcp_client.py "Quiero ver mis movimientos del mes pasado"
-
-# Levantar el servidor MCP solo (modo stdio, para un host MCP real):
-python -m app.server.mcp_server
+python test_local.py                                   # solo el planificador
+echo {"mensaje":"ver mis metas","contexto":{},"id_user":1} | python run_turn.py   # turno completo
+python -m app.server.mcp_server                        # servidor MCP (stdio)
 ```
-
-## Qué falta para que Cain conecte la API real
-
-Cada función `mock_*` de `app/placeholders/mock_data.py` documenta, en su
-docstring, exactamente qué método de `app/integration/api_client.py`
-(`BancaApiClient`) la reemplaza. El cambio es SOLO en el cuerpo de
-`app/tools/tools.py` (llamar a `BancaApiClient` en vez de `mock_data`) —
-las firmas de las 8 tools y de `planificar_accion` no cambian, así que el
-frontend y el resto del contrato A2UI siguen funcionando igual.
-
-Las dos excepciones son `search_memory_context` y todo lo relacionado con
-`MemoryEvent`/`AuditLog`: Pablo aún no expone `/memory/query` ni
-`/audit/me` en `Endpoints/*.cs`, así que esas siguen siendo mock incluso
-después de conectar todo lo demás.

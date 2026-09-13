@@ -41,6 +41,8 @@ estados: [active]               # status posibles (ver lib/etiquetas.ts)
    arbitrarias fuera del sistema.
 8. `Table` con `caption` + `getRowId` estable; montos con `mxn()`;
    fechas con `fecha()`.
+9. Entrada animada: `attrsAnimacion(step.visual.animation, indice)` (si la
+   IA no pide animación, entra `fade` con stagger por orden).
 
 ## 3. Plantillas base (copiar y adaptar)
 
@@ -105,6 +107,13 @@ export function MiTabla({ step }: { step: ExecutedStep }) {
 Stack de `<Card>` (`flex flex-col gap-2`), badge solo si relevante,
 `ProgressBar` para avances. Ver `SavingsGoalsList.tsx`.
 
+### TplDobleVista — tabla + tarjetas conmutables
+Envuelve la tabla en `<div className="vista-tabla">` y la versión en
+tarjetas en `<div className="vista-cards …">` (el CSS de `globals.css`
+muestra una u otra según `data-vista`, que controla el panel de
+accesibilidad). Ver `ExpenseCategoriesList.tsx`: lista espaciosa con barra
+de participación por defecto + `Table` clásica como alterna.
+
 ### TplConfirmación — `confirmation`
 `Modal` con resumen + footer Revisar/Confirmar. Lo arma `PlanRenderer`
 automático con `pendiente_confirmacion`; no crear uno por tool.
@@ -112,6 +121,14 @@ automático con `pendiente_confirmacion`; no crear uno por tool.
 ### TplFormulario — `form`
 `Input/Select/Button` + errores inline + `aria-describedby`. El submit
 real lo dispara el flujo de confirmación del renderer, no el formulario.
+
+### TplGráfica — `visualizations` (no usa `step`)
+Las gráficas no salen del `result` del step sino de `plan.visualizations`
+(generadas por la IA o por `mcp/app/ia/visualizaciones.py`). En el front
+solo se componen con `components/ui/Chart`: `BarChart` (multi-serie
+automática: todas las claves numéricas), `LineChart`, `AreaChart`,
+`DonutChart` — colores siempre de la paleta activa. `PlanRenderer` ya las
+ordena en cuadrícula con `accessibility_label` como fallback de lector.
 
 ## 4. Dónde va cada archivo
 
@@ -122,8 +139,8 @@ real lo dispara el flujo de confirmación del renderer, no el formulario.
 | De transferencias | `components/transfers/*` |
 | De conciliación | `components/reconciliation/*` |
 | De balance | `components/balance/*` |
-| Registro tool→componente | `PLAN_TOOL_REGISTRY` en `components/chat/PlanRenderer.tsx` |
-| Icono nuevo | `PATHS` en `components/ui/Icon.tsx` (SVG stroke 24px) |
+| Registro tool→componente | `REGISTRO` en `components/chat/PlanRenderer.tsx` |
+| Icono nuevo | `EXTRAS` en `components/ui/Icon.tsx` (SVG stroke 24px; `PATHS` es del vocabulario del plan) |
 | Label/estado nuevo | `lib/etiquetas.ts` |
 
 ## 5. Tamaños, posición y ajuste en vivo (no tocar por elemento)
@@ -133,9 +150,10 @@ real lo dispara el flujo de confirmación del renderer, no el formulario.
   stack bajo `lg`, grids 1→2 cols. Ningún elemento decide su lugar.
 - **Tamaños**: `size` (`sm/md/lg`) y `font_scale` salen de la plantilla IA
    activa (`tamanoEfectivo()`); el elemento solo consume el `size`.
-- **Ajuste en vivo**: `ViewControls` (tamaño S/M/L, vista tabla↔tarjetas,
-  contraste) guarda override local por encima de la plantilla, sin llamar
-  a la IA. No duplicar estos controles dentro de elementos.
+- **Ajuste en vivo**: panel de accesibilidad (tamaño S/M/L, vista
+  tabla↔tarjetas, contraste) guarda el override en `VistaProvider` por
+  encima de la plantilla, sin llamar a la IA. No duplicar estos controles
+  dentro de elementos.
 
 ## 6. Checklist de salida
 
@@ -143,4 +161,4 @@ real lo dispara el flujo de confirmación del renderer, no el formulario.
 - [ ] `EmptyState` en vacío; sin `id_*`/`x_*`/`posted` visibles
 - [ ] Responsive: 360px (1 col, stack) y 1024px sin scroll horizontal
 - [ ] Lector de pantalla: `caption`/`aria-label`/`aria-live` donde aplique
-- [ ] Registrado en `PLAN_TOOL_REGISTRY` (o justificado el fallback)
+- [ ] Registrado en `REGISTRO` (o justificado el fallback)
