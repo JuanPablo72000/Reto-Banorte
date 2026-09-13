@@ -32,7 +32,11 @@ import type {
     ExecutedStep,
     SuggestedAction,
     ToolName,
+    Visualization,
 } from "@/lib/types/action-plan";
+import { BarChart, LineChart, DonutChart } from "@/components/ui/Chart";
+import { Card } from "@/components/ui/Card";
+import BankCard from "./BankCard";
 
 export type StepCardProps = { step: ExecutedStep; indice?: number };
 
@@ -169,6 +173,54 @@ export function PlanRenderer({ plan, onSugerencia, onConfirmar }: PlanRendererPr
         );
     }
 
+    function renderVisualization(viz: Visualization, idx: number) {
+        // Si la visualización es una tarjeta bancaria
+        if (viz.type === "bank_card") {
+            const cardData = viz.data[0] || {};
+            return (
+                <div key={`viz-${idx}`} role="figure" aria-label={viz.accessibility_label} className="mb-4">
+                    <h3 className="sr-only">{viz.title}</h3>
+                    <p className="sr-only">{viz.description}</p>
+                    <BankCard
+                        cardNumber={cardData.cardNumber}
+                        holderName={cardData.holderName}
+                        expiryDate={cardData.expiryDate}
+                        bankName={cardData.bankName || "Banorte"}
+                        balance={cardData.balance}
+                        currency={cardData.currency || "MXN"}
+                        cardType={cardData.cardType as 'debit' | 'credit' || 'debit'}
+                        additionalInfo={cardData.additionalInfo || []}
+                        accessibilityLabel={viz.accessibility_label}
+                    />
+                </div>
+            );
+        }
+
+        // Gráficos tradicionales
+        const ChartComponent =
+            viz.type === "bar" ? BarChart :
+            viz.type === "line" ? LineChart :
+            viz.type === "pie" || viz.type === "donut" ? DonutChart :
+            BarChart;
+
+        const dataKey = Object.keys(viz.data[0] || {}).find(k => k !== "name" && k !== "label" && k !== "fecha") || "value";
+        const nameKey = Object.keys(viz.data[0] || {}).find(k => k === "name" || k === "label" || k === "categoria") || Object.keys(viz.data[0] || {})[0];
+
+        return (
+            <Card key={`viz-${idx}`} className="mb-4 p-4" role="figure" aria-label={viz.accessibility_label}>
+                <h3 className="mb-2 text-lg font-semibold text-[var(--color-text)]">{viz.title}</h3>
+                <p className="mb-4 text-sm text-[var(--color-text-muted)]">{viz.description}</p>
+                <ChartComponent
+                    data={viz.data}
+                    xKey={nameKey}
+                    yKey={dataKey as string}
+                    height={280}
+                />
+                <span className="sr-only">{viz.accessibility_label}</span>
+            </Card>
+        );
+    }
+
     return (
         <div
             className="flex w-full flex-col gap-4"
@@ -184,6 +236,12 @@ export function PlanRenderer({ plan, onSugerencia, onConfirmar }: PlanRendererPr
             </p>
 
             <PlanLayout grupos={grupos} renderStep={renderStep} vista={vista} />
+
+            {plan.visualizations && plan.visualizations.length > 0 && (
+                <section aria-label="Visualizaciones" className="mt-4">
+                    {plan.visualizations.map((viz, idx) => renderVisualization(viz, idx))}
+                </section>
+            )}
 
             {plan.suggested_actions.length > 0 && (
                 <SuggestionBar

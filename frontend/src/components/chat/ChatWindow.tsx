@@ -5,6 +5,7 @@ import { ErrorState } from "@/components/states/ErrorState";
 import { ChatComposer } from "./ChatComposer";
 import { ChatSkeleton } from "./ChatSkeleton";
 import { PlanRenderer } from "./PlanRenderer";
+import { FloatingButton } from "@/components/ui/FloatingButton";
 import type { ActionPlanUI, ChatContext, SuggestedAction } from "@/lib/types/action-plan";
 import { WELCOME_TEXT } from "./types";
 
@@ -55,8 +56,48 @@ export function ChatWindow() {
         void enviar(ultimoMensaje, { ...CONTEXTO_BASE, confirmado: true });
     }
 
+    function handleScrollToTop() {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function handleNuevaConsulta() {
+        setPlan(null);
+        setUltimoMensaje("");
+        setError(null);
+    }
+
     return (
         <div className="flex h-full flex-col items-center justify-between p-6">
+            {/* Botón flotante izquierdo - Nueva consulta */}
+            <FloatingButton
+                position="left"
+                variant="secondary"
+                size="md"
+                label="Nueva consulta"
+                onClick={handleNuevaConsulta}
+                icon={
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                }
+                aria-label="Iniciar nueva consulta"
+            />
+
+            {/* Botón flotante derecho - Ir arriba */}
+            <FloatingButton
+                position="right"
+                variant="primary"
+                size="md"
+                label="Ir arriba"
+                onClick={handleScrollToTop}
+                icon={
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                }
+                aria-label="Volver al inicio"
+            />
+
             <div className="flex w-full max-w-2xl flex-1 flex-col items-center gap-6 overflow-y-auto">
                 {!plan && !cargando && !error && (
                     <h1 className="text-center text-3xl font-semibold text-[var(--color-text)] sm:text-4xl">

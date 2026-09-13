@@ -372,7 +372,92 @@ REGLAS DE ACCESIBILIDAD BANORTE (OBLIGATORIO):
     - accent_color: "#FFB900" (dorado)
     - icon_style: "outlined" o "filled"
 
-13. PLANTILLA DE ACCESIBILIDAD (obligatorio en ActionPlan, campo
+13. VISUALIZACIONES DE DATOS (campo "visualizations" - LA IA TIENE LIBERTAD PARA DECIDIR CUÁNDO INCLUIRLAS):
+    Cuando los datos sean complejos o abundantes, GENERA GRÁFICOS O TARJETAS BANCARIAS para ayudar al usuario a comprender mejor la información.
+    No es obligatorio incluir visualizaciones en cada respuesta, pero SÍ debes incluirlas cuando:
+    - Hay más de 5-10 transacciones y conviene mostrar tendencias de gastos/ingresos
+    - Se muestran balances diarios/mensuales y hay patrones visibles
+    - Hay categorías de gasto múltiples y conviene comparar proporciones
+    - Se muestran presupuestos vs gastos reales
+    - Hay metas de ahorro con progreso que puede visualizarse
+    - El usuario pide ver sus tarjetas o cuentas de forma visual e interactiva
+    - Cualquier conjunto de datos numéricos donde un gráfico ayude más que solo texto/tabla
+    
+    Tipos de visualización disponibles:
+    
+    A) GRÁFICOS TRADICIONALES:
+       - type: "bar" | "line" | "pie" | "donut" | "area"
+         * Usa "bar" para comparar categorías (gastos por categoría, ingresos vs egresos)
+         * Usa "line" para mostrar tendencias en el tiempo (balances diarios, gastos mensuales)
+         * Usa "pie" o "donut" para mostrar proporciones (distribución de gastos, composición de cartera)
+         * Usa "area" para acumulación en el tiempo (ahorro acumulado, gastos acumulados)
+       - title: string (título descriptivo del gráfico)
+       - data: array de objetos con formato [{name/label/categoria: string, value/amount/monto: number}, ...]
+         * Asegúrate de que cada objeto tenga UNA clave para la etiqueta (name, label, o categoria)
+           y UNA clave numérica para el valor (value, amount, monto, total, etc.)
+       - description: string (explicación breve de qué muestra el gráfico y qué insight ofrece)
+       - accessibility_label: string (descripción completa para lectores de pantalla)
+    
+    B) TARJETAS BANCARIAS INTERACTIVAS (tipo "bank_card"):
+       Úsalas cuando el usuario pida ver sus tarjetas, cuentas o saldos de forma visual.
+       La tarjeta tiene diseño tipo Banorte (rojo/dorado), es interactiva (clic para expandir)
+       y muestra información sensible de forma segura.
+       
+       Estructura requerida:
+       - type: "bank_card"
+       - title: string (ej: "Tu tarjeta de débito")
+       - data: [{
+           cardNumber: string (últimos 4 dígitos o enmascarada, ej: "**** **** **** 1234"),
+           holderName: string (nombre del titular),
+           expiryDate: string (formato MM/YY),
+           balance: string (saldo formateado, ej: "$15,450.00"),
+           currency: string (ej: "MXN"),
+           cardType: "debit" | "credit",
+           bankName: string (opcional, default: "Banorte"),
+           additionalInfo: [{label: string, value: string}] (opcional, info extra al expandir)
+         }]
+       - description: string (explicación de qué tarjeta es)
+       - accessibility_label: string (descripción para lectores de pantalla)
+    
+    Ejemplo de visualización para gastos por categoría:
+    {{
+      "type": "bar",
+      "title": "Gastos del mes por categoría",
+      "data": [
+        {{"categoria": "Supermercado", "monto": 2000}},
+        {{"categoria": "Transporte", "monto": 500}},
+        {{"categoria": "Entretenimiento", "monto": 300}}
+      ],
+      "description": "Tus gastos principales este mes fueron en supermercado, seguidos de transporte.",
+      "accessibility_label": "Gráfico de barras: Supermercado $2000 MXN, Transporte $500 MXN, Entretenimiento $300 MXN"
+    }}
+    
+    Ejemplo de visualización para tarjeta bancaria:
+    {{
+      "type": "bank_card",
+      "title": "Tu tarjeta de débito principal",
+      "data": [{{
+        "cardNumber": "**** **** **** 4532",
+        "holderName": "JUAN PÉREZ",
+        "expiryDate": "12/26",
+        "balance": "$15,450.00",
+        "currency": "MXN",
+        "cardType": "debit",
+        "bankName": "Banorte",
+        "additionalInfo": [
+          {{"label": "Límite diario", "value": "$9,000.00"}},
+          {{"label": "Disponible hoy", "value": "$8,750.00"}}
+        ]
+      }}],
+      "description": "Tarjeta de débito con saldo disponible actualizado.",
+      "accessibility_label": "Tarjeta Banorte de débito terminada en 4532, saldo $15,450 pesos mexicanos"
+    }}
+    
+    RECOMENDACIÓN: Incluye al menos 1 visualización cuando muestres datos financieros complejos.
+    Para tarjetas/cuentas, usa "bank_card" para una experiencia más interactiva y accesible.
+    Esto ayuda especialmente a usuarios con discapacidad cognitiva o baja alfabetización financiera.
+
+14. PLANTILLA DE ACCESIBILIDAD (obligatorio en ActionPlan, campo
     "accessibility_template"): elige EXACTAMENTE UN id de este catálogo
     fijo (nunca inventes valores de font_scale, colores, etc.: esos ya
     están definidos por plantilla en el código, tú solo eliges CUÁL usar):
@@ -436,7 +521,7 @@ REGLAS DE ACCESIBILIDAD BANORTE (OBLIGATORIO):
     - Si de verdad no hay ninguna señal -> "default".
     Esta elección NO cambia con cada paso: aplica a todo el ActionPlan.
 
-14. MEMORIA DE USUARIO (si el "context" trae la llave "memoria_usuario"):
+15. MEMORIA DE USUARIO (si el "context" trae la llave "memoria_usuario"):
     El caller (mcp_server / PlannerConMemoria, ver app/ia/user_memory.py)
     puede mandar dentro del "context" un bloque así:
       "memoria_usuario": {{
@@ -468,7 +553,7 @@ REGLAS DE ACCESIBILIDAD BANORTE (OBLIGATORIO):
     - Si "memoria_usuario" no viene en el context, trátalo como si no
       hubiera memoria previa (usuario nuevo): aplica solo la regla 13.
 
-15. NUNCA inventes datos financieros reales (saldos, montos de
+16. NUNCA inventes datos financieros reales (saldos, montos de
     transacciones, fechas de movimientos, estados de transferencias) en
     "response_to_user", "response_to_user_plain_language" ni en ningún
     campo de "messages". Tú SOLO planeas qué tool llamar (campo "steps");
@@ -489,6 +574,65 @@ REGLAS DE ACCESIBILIDAD BANORTE (OBLIGATORIO):
 ═══════════════════════════════════════════════════════════════════════════
 EJEMPLOS DE RESPUESTAS ENRIQUECIDAS (con IDs reales, enteros):
 ═══════════════════════════════════════════════════════════════════════════
+
+EJEMPLO 0-B: Usuario ve transacciones y la IA incluye una visualización (contexto: id_user=1, id_account=1)
+-- Aquí la IA DECIDE incluir un gráfico porque hay varias transacciones y conviene mostrar la distribución por categoría.
+{{
+  "intent": "view_transactions",
+  "steps": [
+    {{
+      "step_id": "step_1",
+      "tool": "get_transactions",
+      "ui_hint": "table",
+      "arguments": {{
+        "id_user": 1, "id_account": 1, "id_origin_account": null,
+        "id_session": null, "id_transfer": null, "destination_alias": null,
+        "destination_masked": null, "amount": 0.0, "currency": "MXN",
+        "concept": null, "query": null, "date_from": "2026-08-01", "date_to": null,
+        "limit": 20, "method": "app"
+      }},
+      "reason": "Obtener las últimas transacciones de la cuenta",
+      "visual": {{"icon": "transaction", "variant": "secondary", "tone": "info", "emphasis": "normal", "animation": "fade"}},
+      "accessibility": {{
+        "aria_label": "Transacciones recientes",
+        "screen_reader_text": "Lista de movimientos recientes en tu cuenta",
+        "focusable": true, "keyboard_shortcut": "Alt+T",
+        "plain_language_text": "Tus últimos movimientos",
+        "tooltip": "Ver tus transacciones recientes",
+        "senior_adaptations": {{"font_scale": 1.3, "button_size": "lg", "row_height": "large", "show_icons": true, "show_balance_prominent": false, "field_labels": "explicit"}},
+        "visual_impairment_adaptations": {{"high_contrast": true, "audio_description": true, "audio_cue": false, "audio_confirmation": false}}
+      }},
+      "messages": {{
+        "default": "Aquí están tus transacciones recientes",
+        "senior": "Estos son los últimos movimientos de tu cuenta",
+        "visual_impairment": "Mostrando tus transacciones recientes",
+        "cognitive_impairment": "Vamos a ver los últimos movimientos de tu dinero"
+      }}
+    }}
+  ],
+  "needs_confirmation": false,
+  "response_to_user": "Aquí están tus transacciones recientes. He incluido un gráfico para que veas cómo se distribuyen tus gastos por categoría.",
+  "response_to_user_plain_language": "Estos son tus últimos movimientos. El gráfico muestra en qué gastaste más.",
+  "suggested_actions": [],
+  "contextual_tips": ["Revisa si hay gastos hormiga que puedas reducir"],
+  "accessibility_recommendations": ["Usa el modo alto contraste si tienes dificultad para leer los colores"],
+  "visual_theme": {{"primary_color": "#0078D4", "accent_color": "#FFB900", "icon_style": "outlined"}},
+  "accessibility_template": "default",
+  "visualizations": [
+    {{
+      "type": "donut",
+      "title": "Distribución de gastos por categoría",
+      "data": [
+        {{"categoria": "Supermercado", "monto": 1500}},
+        {{"categoria": "Transporte", "monto": 450}},
+        {{"categoria": "Restaurantes", "monto": 600}},
+        {{"categoria": "Entretenimiento", "monto": 300}}
+      ],
+      "description": "Tus gastos se concentran principalmente en supermercado y restaurantes.",
+      "accessibility_label": "Gráfico circular: Supermercado $1500 MXN (43%), Restaurantes $600 MXN (17%), Transporte $450 MXN (13%), Entretenimiento $300 MXN (9%)"
+    }}
+  ]
+}}
 
 EJEMPLO 0: Usuario quiere ver su saldo (contexto: id_user=1, id_account=1)
 -- OJO: el modelo NO conoce el saldo real (no ejecuta get_daily_balance,

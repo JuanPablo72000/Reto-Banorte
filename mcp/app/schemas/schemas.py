@@ -1192,6 +1192,19 @@ class ActionPlan(BaseModel):
             "ese catálogo, nunca el modelo."
         ),
     )
+    visualizations: list[dict] = Field(
+        default_factory=list,
+        description=(
+            "Elementos visuales adicionales (gráficos, charts, diagramas, tarjetas bancarias) que la IA decide "
+            "generar cuando ayudan a comprender mejor los datos. Cada visualización debe tener: "
+            "{type: 'bar|line|pie|donut|area|bank_card', title: str, data: list[dict], description: str, "
+            "accessibility_label: str}. Para tipo 'bank_card', los datos deben incluir: cardNumber, holderName, "
+            "expiryDate, balance, currency, cardType ('debit' o 'credit'), bankName (opcional, default 'Banorte'), "
+            "y additionalInfo (array opcional con label y value). La IA TIENE LIBERTAD de decidir cuándo incluir "
+            "estos elementos según la complejidad de los datos y las necesidades del usuario. Las tarjetas bancarias "
+            "son ideales para mostrar información de cuentas de forma interactiva y accesible."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1394,13 +1407,29 @@ ACTION_PLAN_SCHEMA = {
         "contextual_tips": {"type": "array", "items": {"type": "string"}},
         "accessibility_recommendations": {"type": "array", "items": {"type": "string"}},
         "visual_theme": VISUAL_THEME_SCHEMA,
-        "accessibility_template": {"type": "string", "enum": ACCESSIBILITY_TEMPLATE_IDS}
+        "accessibility_template": {"type": "string", "enum": ACCESSIBILITY_TEMPLATE_IDS},
+        "visualizations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "enum": ["bar", "line", "pie", "donut", "area"]},
+                    "title": {"type": "string"},
+                    "data": {"type": "array", "items": {"type": "object"}},
+                    "description": {"type": "string"},
+                    "accessibility_label": {"type": "string"}
+                },
+                "required": ["type", "title", "data", "description", "accessibility_label"],
+                "additionalProperties": False
+            },
+            "description": "Gráficos o elementos visuales que la IA decide generar cuando ayudan a comprender mejor los datos complejos"
+        }
     },
     "required": [
         "intent", "steps", "needs_confirmation", "response_to_user",
         "response_to_user_plain_language", "suggested_actions",
         "contextual_tips", "accessibility_recommendations", "visual_theme",
-        "accessibility_template"
+        "accessibility_template", "visualizations"
     ],
     "additionalProperties": False
 }

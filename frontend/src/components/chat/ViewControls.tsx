@@ -17,7 +17,7 @@ function Grupo<T extends string>({
 }) {
     return (
         <div className="flex items-center gap-1" role="group" aria-label={etiqueta}>
-            <span className="text-xs text-[var(--color-text-muted)]">{etiqueta}:</span>
+            <span className="text-xs font-medium text-[var(--color-text-muted)]">{etiqueta}:</span>
             {opciones.map((o) => (
                 <Button
                     key={o.valor}
@@ -25,6 +25,7 @@ function Grupo<T extends string>({
                     size="sm"
                     onClick={() => onElegir(o.valor)}
                     aria-pressed={valor === o.valor}
+                    className="min-w-[2.5rem]"
                 >
                     {o.texto}
                 </Button>
@@ -59,38 +60,40 @@ export function ViewControls({
     }
 
     return (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-2">
-            <Grupo
-                etiqueta="Tamaño"
-                valor={vista.tamano}
-                onElegir={(v) => cambiar({ tamano: v })}
-                opciones={[
-                    { valor: "auto", texto: "Auto" },
-                    { valor: "sm", texto: "S" },
-                    { valor: "md", texto: "M" },
-                    { valor: "lg", texto: "L" },
-                ]}
-            />
-            <Grupo
-                etiqueta="Vista"
-                valor={vista.vista}
-                onElegir={(v) => cambiar({ vista: v })}
-                opciones={[
-                    { valor: "auto", texto: "Auto" },
-                    { valor: "tabla", texto: "Tabla" },
-                    { valor: "tarjetas", texto: "Tarjetas" },
-                ]}
-            />
-            <Grupo
-                etiqueta="Contraste"
-                valor={vista.contraste}
-                onElegir={(v) => cambiar({ contraste: v })}
-                opciones={[
-                    { valor: "auto", texto: "Auto" },
-                    { valor: "normal", texto: "Normal" },
-                    { valor: "high", texto: "Alto" },
-                ]}
-            />
+        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3 shadow-sm">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <Grupo
+                    etiqueta="Tamaño"
+                    valor={vista.tamano}
+                    onElegir={(v) => cambiar({ tamano: v })}
+                    opciones={[
+                        { valor: "auto", texto: "Auto" },
+                        { valor: "sm", texto: "S" },
+                        { valor: "md", texto: "M" },
+                        { valor: "lg", texto: "L" },
+                    ]}
+                />
+                <Grupo
+                    etiqueta="Vista"
+                    valor={vista.vista}
+                    onElegir={(v) => cambiar({ vista: v })}
+                    opciones={[
+                        { valor: "auto", texto: "Auto" },
+                        { valor: "tabla", texto: "Tabla" },
+                        { valor: "tarjetas", texto: "Tarjetas" },
+                    ]}
+                />
+                <Grupo
+                    etiqueta="Contraste"
+                    valor={vista.contraste}
+                    onElegir={(v) => cambiar({ contraste: v })}
+                    opciones={[
+                        { valor: "auto", texto: "Auto" },
+                        { valor: "normal", texto: "Normal" },
+                        { valor: "high", texto: "Alto" },
+                    ]}
+                />
+            </div>
         </div>
     );
 }
