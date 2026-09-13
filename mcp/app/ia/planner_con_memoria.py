@@ -1,7 +1,7 @@
 """
-GroqPlanner + memoria de usuario — parte de Guillermo (MCP + modelo de IA).
+PlannerIA + memoria de usuario — parte de Guillermo (MCP + modelo de IA).
 
-Combina GroqPlanner (sin estado, ver groq_client.py) con
+Combina PlannerIA (sin estado, ver ia_client.py) con
 MemoriaUsuarioStore (ver user_memory.py) para que:
 
   1. Los clics que reporta el frontend se acumulen por usuario.
@@ -9,7 +9,7 @@ MemoriaUsuarioStore (ver user_memory.py) para que:
      los siguientes, aunque el usuario no repita la condición.
   3. El modelo reciba ese estado como parte de "context" bajo la llave
      "memoria_usuario" (ver la regla 14 de SYSTEM_INSTRUCTION en
-     groq_client.py, que le dice explícitamente cómo usarlo).
+      ia_client.py, que le dice explícitamente cómo usarlo).
   4. Aunque el modelo IGNORE esa instrucción (pasa con modelos chicos
      como gpt-oss-20b bajo carga): si devuelve "default" pero el usuario
      ya tenía otra plantilla guardada y el mensaje actual no pide
@@ -17,7 +17,7 @@ MemoriaUsuarioStore (ver user_memory.py) para que:
      _es_reset_explicito) -- no dependemos solo del prompt.
 
 Este es el punto de entrada que debería usar el servidor MCP
-(mcp_server.py) en vez de instanciar GroqPlanner directo, para que la
+(mcp_server.py) en vez de instanciar PlannerIA directo, para que la
 continuidad entre turnos no dependa de que cada caller se acuerde de
 armar a mano el contexto de memoria.
 """
@@ -27,7 +27,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from app.ia.groq_client import GroqPlanner
+from app.ia.ia_client import PlannerIA
 from app.ia.user_memory import DEFAULT_MEMORY_PATH, MemoriaUsuarioStore
 from app.schemas import ActionPlan
 
@@ -57,11 +57,11 @@ class PlannerConMemoria:
 
     def __init__(
         self,
-        planner: Optional[GroqPlanner] = None,
+        planner: Optional[PlannerIA] = None,
         memoria: Optional[MemoriaUsuarioStore] = None,
         ruta_memoria: Optional[str] = DEFAULT_MEMORY_PATH,
     ) -> None:
-        self.planner = planner or GroqPlanner()
+        self.planner = planner or PlannerIA()
         self.memoria = memoria or MemoriaUsuarioStore(ruta_memoria)
 
     async def plan(
@@ -74,7 +74,7 @@ class PlannerConMemoria:
         """Genera un ActionPlan enriquecido CON continuidad entre turnos.
 
         id_user: de quién es la memoria a leer/actualizar.
-        contexto: lo mismo que ya le mandabas a GroqPlanner.plan()
+        contexto: lo mismo que ya le mandabas a PlannerIA.plan()
             (id_account, id_user, etc. — ver test_local.py).
         clicks: lo que el FRONTEND reporta en ESTE request, ej.
             {"prepare_transfer": 1, "get_transactions": 3}. Se suma al

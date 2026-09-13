@@ -3,7 +3,7 @@ Memoria de usuario — accesibilidad detectada + contador de clics por
 función — parte de Guillermo (MCP + modelo de IA).
 
 POR QUÉ EXISTE:
-  GroqPlanner (groq_client.py) es completamente SIN ESTADO: cada llamada
+  PlannerIA (ia_client.py) es completamente SIN ESTADO: cada llamada
   a `plan()` solo ve el mensaje actual y el "context" que le pasemos,
   nada de lo que pasó antes. Si en el turno 1 alguien dice "soy
   daltónico" y en el turno 2 solo dice "transfiere 500 pesos", sin
@@ -20,7 +20,7 @@ POR QUÉ EXISTE:
       función/botón. El conteo real vive en el frontend; aquí solo se
       acumula lo que nos manda, nunca lo inventamos.
     - intents_recientes: los últimos intents del ActionPlan, para dar
-      un poco de continuidad conversacional sin mandarle a Groq el
+      un poco de continuidad conversacional sin mandarle a la IA el
       historial completo de mensajes (eso infla mucho el prompt — ya
       hemos visto 413 "tokens per minute" solo con el schema base).
 
@@ -158,8 +158,8 @@ class MemoriaUsuarioStore:
 
     async def contexto_para_prompt(self, id_user: int, top_n_clics: int = 5) -> dict:
         """Dict listo para mezclarse en el "context" que se le pasa a
-        GroqPlanner.plan() (ver regla 14 del SYSTEM_INSTRUCTION en
-        groq_client.py). Se manda TAL CUAL dentro del JSON del prompt,
+        PlannerIA.plan() (ver regla 14 del SYSTEM_INSTRUCTION en
+        ia_client.py). Se manda TAL CUAL dentro del JSON del prompt,
         así que se mantiene chico a propósito: solo el top N de clics y
         los últimos N intents, no el historial completo."""
         async with self._lock:

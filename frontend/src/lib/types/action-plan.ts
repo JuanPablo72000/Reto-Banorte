@@ -115,7 +115,7 @@ export interface VisualTheme {
 }
 
 export interface Visualization {
-    type: "bar" | "line" | "pie" | "donut" | "area";
+    type: "bar" | "line" | "pie" | "donut" | "area" | "bank_card";
     title: string;
     data: Record<string, unknown>[];
     description: string;

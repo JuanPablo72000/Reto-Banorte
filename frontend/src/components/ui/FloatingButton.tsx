@@ -4,7 +4,7 @@ import { ButtonHTMLAttributes, forwardRef } from "react";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 type Size = "sm" | "md" | "lg";
-type Position = "left" | "right" | "inline";
+type Position = "inline" | "bottom-right" | "bottom-left";
 
 export interface FloatingButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: Variant;
@@ -16,12 +16,12 @@ export interface FloatingButtonProps extends ButtonHTMLAttributes<HTMLButtonElem
 
 const variantClasses: Record<Variant, string> = {
     primary:
-        "bg-[var(--color-accent)] text-[var(--color-on-accent)] hover:brightness-95 active:brightness-90 shadow-lg",
+        "bg-[var(--color-accent)] text-[var(--color-accent-text)] hover:bg-[var(--color-accent-hover)] shadow-[var(--shadow-2)]",
     secondary:
-        "bg-[var(--color-surface-2)] text-[var(--color-text)] border border-[var(--color-border)] hover:bg-[var(--color-surface-3)] shadow-md",
-    danger: "bg-[var(--color-danger)] text-white hover:brightness-95 shadow-lg",
+        "bg-[var(--color-surface-2)] text-[var(--color-text)] border border-[var(--color-border)] hover:bg-[var(--color-surface-3)] shadow-[var(--shadow-1)]",
+    danger: "bg-[var(--color-danger-bg)] text-[var(--color-danger-text)] hover:brightness-95 shadow-[var(--shadow-2)]",
     ghost:
-        "bg-[var(--color-surface-2)]/90 backdrop-blur-sm text-[var(--color-text)] hover:bg-[var(--color-surface-3)] shadow-md",
+        "bg-[var(--color-surface-2)]/90 backdrop-blur-sm text-[var(--color-text)] hover:bg-[var(--color-surface-3)] shadow-[var(--shadow-1)]",
 };
 
 const sizeClasses: Record<Size, string> = {
@@ -30,10 +30,14 @@ const sizeClasses: Record<Size, string> = {
     lg: "text-lg px-5 py-3 gap-3 min-h-[56px]",
 };
 
+// FAB: esquina inferior, nunca a media pantalla tapando contenido;
+// en móvil queda arriba del bottom tab bar (bottom offset mayor).
 const positionClasses: Record<Position, string> = {
     inline: "",
-    left: "fixed left-4 top-1/2 -translate-y-1/2 z-50 rounded-full",
-    right: "fixed right-4 top-1/2 -translate-y-1/2 z-50 rounded-full",
+    "bottom-right":
+        "fixed bottom-[calc(var(--bottomnav-h)+1rem)] right-4 z-50 rounded-full lg:bottom-6 lg:right-6",
+    "bottom-left":
+        "fixed bottom-[calc(var(--bottomnav-h)+1rem)] left-4 z-50 rounded-full lg:bottom-6 lg:left-6",
 };
 
 export const FloatingButton = forwardRef<HTMLButtonElement, FloatingButtonProps>(
@@ -51,20 +55,23 @@ export const FloatingButton = forwardRef<HTMLButtonElement, FloatingButtonProps>
         ref
     ) => {
         const isDisabled = disabled || false;
+        const flotante = position !== "inline";
 
         return (
             <button
                 ref={ref}
+                type="button"
                 disabled={isDisabled}
                 aria-busy={false}
                 aria-disabled={isDisabled || undefined}
+                title={flotante ? label : undefined}
                 className={[
-                    "inline-flex items-center justify-center font-medium transition-all duration-200",
+                    "inline-flex items-center justify-center font-medium",
+                    "transition-[transform,background-color,box-shadow] duration-200 motion-reduce:transition-none",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-                    "focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-[var(--color-bg)]",
+                    "focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-[var(--color-surface)]",
                     "disabled:opacity-50 disabled:cursor-not-allowed",
-                    "motion-reduce:transition-none",
-                    position !== "inline" && "flex-col p-3 hover:scale-105",
+                    flotante && "ui-fab flex-col p-3.5 hover:scale-105 active:scale-95",
                     variantClasses[variant],
                     sizeClasses[size],
                     positionClasses[position],
@@ -73,10 +80,7 @@ export const FloatingButton = forwardRef<HTMLButtonElement, FloatingButtonProps>
                 {...props}
             >
                 {icon && <span aria-hidden="true">{icon}</span>}
-                {position === "inline" && <span>{label}</span>}
-                {position !== "inline" && (
-                    <span className="sr-only">{label}</span>
-                )}
+                {flotante ? <span className="sr-only">{label}</span> : <span>{label}</span>}
             </button>
         );
     }

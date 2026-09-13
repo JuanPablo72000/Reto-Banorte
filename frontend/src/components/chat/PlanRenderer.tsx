@@ -10,6 +10,7 @@ import { StatementDetail } from "@/components/accounts/StatementDetail";
 import { StatementsTable } from "@/components/accounts/StatementsTable";
 import { UserContextCard } from "@/components/accounts/UserContextCard";
 import { useA11y } from "@/components/accessibility/A11yProvider";
+import { useVista } from "@/components/providers/VistaProvider";
 import { BalancePlanCard } from "@/components/balance/BalancePlanCard";
 import { GenericStepCard } from "@/components/chat/GenericStepCard";
 import { ReconciliationPlanTable } from "@/components/reconciliation/ReconciliationPlanTable";
@@ -23,9 +24,9 @@ import { BannerInfo } from "@/components/ui/BannerInfo";
 import { Modal } from "@/components/ui/Modal";
 import { PlanLayout } from "@/components/chat/PlanLayout";
 import { SuggestionBar } from "@/components/chat/SuggestionBar";
-import { ViewControls } from "@/components/chat/ViewControls";
 import { attrsAnimacion } from "@/lib/atributos";
-import { agruparPorSeccion, tamanoEfectivo, useVistaEnVivo } from "@/lib/layout";
+import { agruparPorSeccion, tamanoEfectivo } from "@/lib/layout";
+import { aplicarPlantilla } from "@/lib/plantillas";
 import type {
     AccessibilityTemplate,
     ActionPlanUI,
@@ -36,7 +37,7 @@ import type {
 } from "@/lib/types/action-plan";
 import { BarChart, LineChart, DonutChart } from "@/components/ui/Chart";
 import { Card } from "@/components/ui/Card";
-import BankCard from "./BankCard";
+import BankCard from "../BankCard";
 
 export type StepCardProps = { step: ExecutedStep; indice?: number };
 
@@ -75,30 +76,6 @@ function mensajePara(step: ExecutedStep, plantilla: AccessibilityTemplate): stri
     return step.messages[clave as keyof typeof step.messages] ?? step.messages.default;
 }
 
-function aplicarPlantilla(
-    plantilla: AccessibilityTemplate,
-    usar: ReturnType<typeof useA11y>,
-    tocarContraste = true,
-) {
-    // Solo plantillas no-default pisan preferencias (nunca se resetea
-    // lo del usuario cuando el plan trae "default"). Con override manual
-    // de contraste en vivo, el usuario manda y no se toca.
-    if (plantilla === "low_vision") {
-        usar.setFontScale(1.75);
-        if (tocarContraste) usar.setContrast("high");
-    } else if (plantilla === "senior") {
-        usar.setFontScale(1.5);
-    } else if (plantilla === "motor_impairment") {
-        usar.setFontScale(1.25);
-    } else if (plantilla === "cognitive_impairment" || plantilla === "low_literacy") {
-        usar.setFontScale(1.15);
-    } else if (plantilla.startsWith("color_blind")) {
-        usar.setPalette("colorblind");
-    } else if (plantilla === "blind_screen_reader") {
-        usar.setFontScale(1.25);
-    }
-}
-
 export interface PlanRendererProps {
     plan: ActionPlanUI;
     onSugerencia: (accion: SuggestedAction) => void;
@@ -114,9 +91,9 @@ export function PlanRenderer({ plan, onSugerencia, onConfirmar }: PlanRendererPr
     const modalAbierto = pendiente && vistoPara !== plan;
     const cerrarModal = () => setVistoPara(plan);
 
-    // Ajuste en vivo (ViewControls): estado único aquí; el override
-    // local gana a la plantilla de la IA.
-    const [vista, setVista] = useVistaEnVivo();
+    // Ajuste en vivo: estado compartido con el panel de accesibilidad
+    // (VistaProvider); el override local gana a la plantilla de la IA.
+    const { vista } = useVista();
     const { size: tamanoBotones } = tamanoEfectivo(plan.accessibility_template, vista);
 
     useEffect(() => {
@@ -176,46 +153,63 @@ export function PlanRenderer({ plan, onSugerencia, onConfirmar }: PlanRendererPr
     function renderVisualization(viz: Visualization, idx: number) {
         // Si la visualización es una tarjeta bancaria
         if (viz.type === "bank_card") {
-            const cardData = viz.data[0] || {};
+            const cardData: Record<string, unknown> = viz.data[0] ?? {};
+            const texto = (k: string, defecto = ""): string => {
+                const v = cardData[k];
+                return typeof v === "string" ? v : typeof v === "number" ? String(v) : defecto;
+            };
+            const info = Array.isArray(cardData.additionalInfo)
+                ? (cardData.additionalInfo as unknown[]).flatMap((r) =>
+                      r && typeof r === "object" &&
+                      typeof (r as Record<string, unknown>).label === "string" &&
+                      typeof (r as Record<string, unknown>).value === "string"
+                          ? [{ label: (r as Record<string, string>).label, value: (r as Record<string, string>).value }]
+                          : [],
+                  )
+                : [];
             return (
                 <div key={`viz-${idx}`} role="figure" aria-label={viz.accessibility_label} className="mb-4">
                     <h3 className="sr-only">{viz.title}</h3>
                     <p className="sr-only">{viz.description}</p>
                     <BankCard
-                        cardNumber={cardData.cardNumber}
-                        holderName={cardData.holderName}
-                        expiryDate={cardData.expiryDate}
-                        bankName={cardData.bankName || "Banorte"}
-                        balance={cardData.balance}
-                        currency={cardData.currency || "MXN"}
-                        cardType={cardData.cardType as 'debit' | 'credit' || 'debit'}
-                        additionalInfo={cardData.additionalInfo || []}
+                        cardNumber={texto("cardNumber")}
+                        holderName={texto("holderName")}
+                        expiryDate={texto("expiryDate")}
+                        bankName={texto("bankName", "Banorte")}
+                        balance={texto("balance")}
+                        currency={texto("currency", "MXN")}
+                        cardType={texto("cardType") === "credit" ? "credit" : "debit"}
+                        additionalInfo={info}
                         accessibilityLabel={viz.accessibility_label}
                     />
                 </div>
             );
         }
 
-        // Gráficos tradicionales
-        const ChartComponent =
-            viz.type === "bar" ? BarChart :
-            viz.type === "line" ? LineChart :
-            viz.type === "pie" || viz.type === "donut" ? DonutChart :
-            BarChart;
-
-        const dataKey = Object.keys(viz.data[0] || {}).find(k => k !== "name" && k !== "label" && k !== "fecha") || "value";
-        const nameKey = Object.keys(viz.data[0] || {}).find(k => k === "name" || k === "label" || k === "categoria") || Object.keys(viz.data[0] || {})[0];
+        // Gráficos tradicionales (normaliza filas a string|number)
+        const filas = viz.data.map((r) => {
+            const fila: Record<string, string | number> = {};
+            for (const [k, v] of Object.entries(r)) {
+                if (typeof v === "string" || typeof v === "number") fila[k] = v;
+            }
+            return fila;
+        });
+        const claves = Object.keys(filas[0] ?? {});
+        const dataKey = claves.find((k) => k !== "name" && k !== "label" && k !== "fecha") ?? "value";
+        const nameKey =
+            claves.find((k) => k === "name" || k === "label" || k === "categoria") ?? claves[0] ?? "name";
+        const esDona = viz.type === "pie" || viz.type === "donut";
+        const ChartComponent = viz.type === "line" ? LineChart : BarChart;
 
         return (
             <Card key={`viz-${idx}`} className="mb-4 p-4" role="figure" aria-label={viz.accessibility_label}>
                 <h3 className="mb-2 text-lg font-semibold text-[var(--color-text)]">{viz.title}</h3>
                 <p className="mb-4 text-sm text-[var(--color-text-muted)]">{viz.description}</p>
-                <ChartComponent
-                    data={viz.data}
-                    xKey={nameKey}
-                    yKey={dataKey as string}
-                    height={280}
-                />
+                {esDona ? (
+                    <DonutChart data={filas} nameKey={nameKey} valueKey={dataKey} height={280} />
+                ) : (
+                    <ChartComponent data={filas} xKey={nameKey} yKey={dataKey} height={280} />
+                )}
                 <span className="sr-only">{viz.accessibility_label}</span>
             </Card>
         );
@@ -230,8 +224,11 @@ export function PlanRenderer({ plan, onSugerencia, onConfirmar }: PlanRendererPr
                 } as React.CSSProperties
             }
         >
-            <ViewControls vista={vista} onChange={setVista} />
-            <p className="text-lg text-[var(--color-text)]" aria-live="polite">
+            <p
+                className="ui-rise text-lg text-[var(--color-text)]"
+                aria-live="polite"
+                style={{ "--orden": 0 } as React.CSSProperties}
+            >
                 {texto}
             </p>
 
@@ -244,12 +241,7 @@ export function PlanRenderer({ plan, onSugerencia, onConfirmar }: PlanRendererPr
             )}
 
             {plan.suggested_actions.length > 0 && (
-                <SuggestionBar
-                    sugerencias={plan.suggested_actions}
-                    onActivar={onSugerencia}
-                    animacion="fade"
-                    orden={plan.executed_steps.length}
-                />
+                <SuggestionBar sugerencias={plan.suggested_actions} onActivar={onSugerencia} />
             )}
 
             <Modal

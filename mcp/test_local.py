@@ -1,7 +1,7 @@
 """
 Script de prueba local — NO es parte del servidor MCP ni del cliente MCP.
 
-Sirve para probar GroqPlanner directamente, sin necesitar un cliente MCP
+Sirve para probar PlannerIA directamente, sin necesitar un cliente MCP
 real (para eso está mcp_client.py). Así puedes ver rápido si tu API key
 funciona y qué ActionPlan tipado devuelve el modelo para distintos mensajes
 de usuario, usando los IDs enteros reales del seed (id_user=1, id_account=1
@@ -17,16 +17,16 @@ import logging
 
 from dotenv import load_dotenv
 
-load_dotenv()  # carga GROQ_API_KEY del .env ANTES de importar groq_client
+load_dotenv()  # carga DEEPSEEK_API_KEY del .env ANTES de importar ia_client
 
-from app.ia.groq_client import GroqPlanner
+from app.ia.ia_client import PlannerIA
 from app.logging_config import setup_logging
 
 logger = setup_logging(level=logging.INFO)
 
 
 async def main() -> None:
-    planner = GroqPlanner()
+    planner = PlannerIA()
 
     casos_de_prueba = [
         {

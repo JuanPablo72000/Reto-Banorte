@@ -25,8 +25,23 @@ interface BaseChartProps {
     color?: string;
 }
 
-const DEFAULT_COLOR = "#2563eb";
-const DONUT_COLORS = ["#2563eb", "#16a34a", "#eab308", "#dc2626", "#7c3aed", "#0891b2"];
+const DEFAULT_COLOR = "var(--color-accent)";
+const DONUT_COLORS = [
+    "var(--color-accent)",
+    "var(--color-safe)",
+    "var(--color-accent-dark)",
+    "var(--color-accent-soft)",
+    "var(--color-warning-bg)",
+    "var(--color-text-muted)",
+];
+
+const TOOLTIP_STYLE: React.CSSProperties = {
+    background: "var(--color-surface-2)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "0.5rem",
+    color: "var(--color-text)",
+    fontSize: "0.8125rem",
+};
 
 export function LineChart({ data, xKey, yKey, height = 240, color = DEFAULT_COLOR }: BaseChartProps) {
     return (
@@ -35,7 +50,7 @@ export function LineChart({ data, xKey, yKey, height = 240, color = DEFAULT_COLO
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis dataKey={xKey} tick={{ fontSize: 12 }} stroke="var(--color-text-muted)" />
                 <YAxis tick={{ fontSize: 12 }} stroke="var(--color-text-muted)" />
-                <Tooltip />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
                 <Line type="monotone" dataKey={yKey} stroke={color} strokeWidth={2} dot={false} />
             </ReLineChart>
         </ResponsiveContainer>
@@ -49,7 +64,7 @@ export function BarChart({ data, xKey, yKey, height = 240, color = DEFAULT_COLOR
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis dataKey={xKey} tick={{ fontSize: 12 }} stroke="var(--color-text-muted)" />
                 <YAxis tick={{ fontSize: 12 }} stroke="var(--color-text-muted)" />
-                <Tooltip />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
                 <Bar dataKey={yKey} fill={color} radius={[4, 4, 0, 0]} />
             </ReBarChart>
         </ResponsiveContainer>
@@ -79,7 +94,7 @@ export function DonutChart({ data, nameKey, valueKey, height = 240 }: DonutChart
                         <Cell key={index} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
                     ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
             </RePieChart>
         </ResponsiveContainer>
     );

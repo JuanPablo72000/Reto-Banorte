@@ -1,6 +1,6 @@
 # MCP + IA — Guillermo
 
-Servidor MCP y planificador de IA (Groq) del proyecto **Banca Personal
+Servidor MCP y planificador de IA (DeepSeek+Gemini) del proyecto **Banca Personal
 Adaptativa**, ya migrado para trabajar con IDs enteros reales de
 `backend/src/BancaAdaptativa.Api` (Pablo) en vez de los placeholders de
 texto de la versión anterior (previa a que existiera el backend real).
@@ -12,7 +12,7 @@ mcp/
 ├── app/
 │   ├── schemas/schemas.py     # Modelos Pydantic == DTOs reales (IdUser, IdAccount...)
 │   ├── ia/
-│   │   ├── groq_client.py     # GroqPlanner: genera el ActionPlan (IDs int o null)
+│   │   ├── ia_client.py       # PlannerIA: genera el ActionPlan (IDs int o null)
 │   │   ├── plan_normalizer.py # Corrige typos/placeholders inválidos antes de validar
 │   │   └── contract_catalog.py# Carga y valida contra contracts/a2ui/a2ui-mcp-contract.yaml
 │   ├── integration/api_client.py # Cliente HTTP real (Cain) contra BancaAdaptativa.Api
@@ -21,7 +21,7 @@ mcp/
 │   ├── server/mcp_server.py   # Registra las tools con FastMCP (@mcp.tool)
 │   └── logging_config.py      # Logging a stderr (obligatorio: stdio usa stdout)
 ├── mcp_client.py               # Cliente de prueba end-to-end vía protocolo MCP
-├── test_local.py               # Prueba GroqPlanner directo, sin MCP
+├── test_local.py               # Prueba PlannerIA directo, sin MCP
 ├── requirements.txt
 └── .env.example
 ```
@@ -40,7 +40,7 @@ Igual que `backend/src/BancaAdaptativa.Api/Data/DbSeeder.cs`:
 cd mcp
 python -m venv venv && source venv/bin/activate   # o venv\Scripts\activate en Windows
 pip install -r requirements.txt
-cp .env.example .env   # y pon tu GROQ_API_KEY real
+cp .env.example .env   # y pon tu DEEPSEEK_API_KEY real
 
 # Prueba solo el planificador de IA (sin protocolo MCP):
 python test_local.py

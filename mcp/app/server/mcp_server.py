@@ -19,7 +19,7 @@ ia-placeholders.md):
        - get_budgets_monthly, get_savings_goals
        - get_credit_cards, get_credit_card_statements
   2. Una tool adicional de orquestación con IA, `planificar_accion`, que le
-     pide a Groq un ActionPlan (schemas.py) indicando qué tools de las de
+     pide a la IA un ActionPlan (schemas.py) indicando qué tools de las de
      arriba conviene invocar para cumplir la intención del usuario, con qué
      argumentos (IDs enteros reales o null) y con qué "ui_hint" debería
      mostrarse cada paso en la interfaz.
@@ -46,8 +46,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from dotenv import load_dotenv
 
-# Debe cargarse ANTES de importar app.ia.groq_client (vía tools.py), porque
-# ese módulo lee GROQ_API_KEY con os.getenv() apenas se importa.
+# Debe cargarse ANTES de importar app.ia.ia_client (vía tools.py), porque
+# ese módulo lee DEEPSEEK_API_KEY con os.getenv() apenas se importa.
 load_dotenv()
 
 from fastmcp import FastMCP

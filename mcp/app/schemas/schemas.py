@@ -906,7 +906,7 @@ class StepArguments(BaseModel):
     no había IDs reales que fueran de otro tipo.
 
     AHORA que la base de datos real usa IDs enteros (IdAccount, IdUser,
-    IdTransfer...), el JSON Schema estricto de Groq puede declarar estos
+    IdTransfer...), el JSON Schema puede declarar estos
     campos como `["integer", "null"]` / `["string", "null"]`: el modelo ya
     NO puede inventar un placeholder de texto para un campo numérico (el
     schema se lo impide), así que "no lo sé" ahora es simplemente `null`
@@ -1208,7 +1208,7 @@ class ActionPlan(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# JSON SCHEMA para Groq (additionalProperties:false en todos los objetos,
+# JSON SCHEMA canónico del ActionPlan (additionalProperties:false en todos los objetos,
 # requerido por response_format json_schema en modo "strict")
 # ---------------------------------------------------------------------------
 VISUAL_METADATA_SCHEMA = {

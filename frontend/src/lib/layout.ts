@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { AccessibilityTemplate, ExecutedStep } from "@/lib/types/action-plan";
 
 // Motor de layout por x_position — espejo de PositionMetadata
@@ -102,31 +101,8 @@ export interface VistaEnVivo {
     contraste: "auto" | "normal" | "high";
 }
 
-const VISTA_KEY = "banca-vista-en-vivo";
-const VISTA_DEFAULT: VistaEnVivo = { tamano: "auto", vista: "auto", contraste: "auto" };
-
-function leerVista(): VistaEnVivo {
-    if (typeof window === "undefined") return VISTA_DEFAULT;
-    try {
-        const raw = localStorage.getItem(VISTA_KEY);
-        if (raw) return { ...VISTA_DEFAULT, ...JSON.parse(raw) };
-    } catch {
-        // corrupto: default
-    }
-    return VISTA_DEFAULT;
-}
-
-export function useVistaEnVivo() {
-    const [vista, setVista] = useState<VistaEnVivo>(leerVista);
-    useEffect(() => {
-        try {
-            localStorage.setItem(VISTA_KEY, JSON.stringify(vista));
-        } catch {
-            // almacenamiento lleno/bloqueado: se sigue sin persistir
-        }
-    }, [vista]);
-    return [vista, setVista] as const;
-}
+// El estado en vivo ahora vive en components/providers/VistaProvider.tsx
+// (context compartido entre el panel de accesibilidad y PlanRenderer).
 
 /** Tamaño efectivo: el override en vivo gana a la plantilla de la IA. */
 export function tamanoEfectivo(plantilla: AccessibilityTemplate, vista: VistaEnVivo): {

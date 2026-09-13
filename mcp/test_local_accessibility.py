@@ -2,7 +2,7 @@
 Script de prueba local — accesibilidad y daltonismo (casos rebuscados) —
 NO es parte del servidor MCP ni del cliente MCP.
 
-Es hermano de test_local.py: mismo mecanismo (llama a GroqPlanner
+Es hermano de test_local.py: mismo mecanismo (llama a PlannerIA
 directo), pero aquí SOLO quedan los 6 casos más difíciles de detectar:
 la condición nunca se anuncia con su nombre técnico, viene mezclada con
 otra intención (una queja, un trámite bancario) y el mensaje está escrito
@@ -26,19 +26,18 @@ import json
 import logging
 
 from dotenv import load_dotenv
-from groq import APIStatusError, RateLimitError
 
-load_dotenv()  # carga GROQ_API_KEY del .env ANTES de importar groq_client
+load_dotenv()  # carga DEEPSEEK_API_KEY del .env ANTES de importar ia_client
 
 from app.ia.accessibility_templates import ACCESSIBILITY_TEMPLATE_IDS
-from app.ia.groq_client import GroqPlanner
+from app.ia.ia_client import PlannerIA
 from app.logging_config import setup_logging
 
 logger = setup_logging(level=logging.INFO)
 
-# Pausa entre casos (segundos) para no saturar el límite de tokens/minuto
-# (TPM) del tier gratuito de Groq. Si sigues viendo 429/413, sube este
-# valor o corre menos casos por ejecución (parte casos_de_prueba en dos).
+# Pausa entre casos (segundos) para no saturar el rate limit del
+# proveedor de IA. Si sigues viendo 429, sube este valor o corre menos
+# casos por ejecución (parte casos_de_prueba en dos).
 PAUSA_ENTRE_CASOS_SEG = 8
 
 
@@ -107,7 +106,7 @@ casos_de_prueba = [
 
 
 async def main() -> None:
-    planner = GroqPlanner()
+    planner = PlannerIA()
 
     aciertos = 0
     fallidos: list[tuple[int, str, str]] = []  # (num_caso, mensaje, error)
@@ -120,20 +119,10 @@ async def main() -> None:
 
         try:
             plan = await planner.plan(user_message=caso["mensaje"], context=caso["contexto"])
-        except RateLimitError as e:
-            # 429: se agotó tokens/peticiones por minuto. El cliente ya
-            # reintenta con backoff internamente; si llega aquí es que se
-            # acabaron los reintentos. Saltamos el caso y seguimos.
-            print(f"⚠️  Rate limit (429) agotado para este caso, se salta: {e}")
-            fallidos.append((i, caso["mensaje"], "429 rate limit"))
-            await asyncio.sleep(PAUSA_ENTRE_CASOS_SEG)
-            continue
-        except APIStatusError as e:
-            # 413 u otro error de la API: normalmente significa que el
-            # prompt+schema de ESTE modelo ya excede su cuota de TPM
-            # (no se arregla esperando). Se salta el caso, no se aborta
-            # el resto del test.
-            print(f"⚠️  Error de la API de Groq, se salta este caso: {e}")
+        except Exception as e:  # noqa: BLE001 — test: 429/validación, se salta el caso
+            # Sin cupo o JSON inválido tras reintentos: se salta el caso,
+            # no se aborta el resto del test.
+            print(f"⚠️  IA no disponible para este caso, se salta: {str(e)[:200]}")
             fallidos.append((i, caso["mensaje"], str(e)[:200]))
             await asyncio.sleep(PAUSA_ENTRE_CASOS_SEG)
             continue

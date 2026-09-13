@@ -19,7 +19,7 @@
 - `frontend/src/lib/mcp/client.ts`: abstrae el transporte. Hoy `spawn`
   del script (`MCP_SERVER_SCRIPT`, default `../../mcp/app/server/
   mcp_server.py` en dev y `/srv/app/mcp-server/...` en docker);
-  propaga `GROQ_API_KEY`, `GEMINI_API_KEY`, `BANORTE_*` y
+  propaga `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `BANORTE_*` y
   `BANORTE_API_TOKEN` al subproceso.
 - `frontend/src/lib/types/action-plan.ts`: tipos TS espejo 1:1 de
   `mcp/app/schemas/schemas.py` (`ActionPlan`, `ExecutedStep`,
@@ -86,6 +86,6 @@ el auto-login demo. Sin token: demo (`demo@banorte.mx`).
   `MCP_TRANSPORT=http` levanta streamable-http en `MCP_PORT` (8080).
 - `frontend/Dockerfile`: Node 22 + Python 3.12 + `mcp/` copiado a
   `/srv/app/mcp-server` para el subproceso stdio; `MCP_SERVER_SCRIPT`
-  apunta ahí. Las keys (`GROQ_API_KEY`, `GEMINI_API_KEY`, `JWT_KEY`,
+  apunta ahí. Las keys (`DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `JWT_KEY`,
   `BANORTE_API_TOKEN`) se inyectan por `environment:` en compose
   (nunca commiteadas).

@@ -10,9 +10,14 @@ export interface IconProps {
     title?: string;
 }
 
-// Extras internos (grips de reordenado, estados, envíos): NO vienen del
-// plan, solo de la UI. Traídos del set de Qwen.
-export type IconExtra = "grip" | "plus" | "check" | "clock" | "bell" | "lock" | "send" | "chart";
+// Extras internos (grips de reordenado, estados, envíos, shell): NO vienen
+// del plan, solo de la UI. Traídos del set de Qwen + navegación.
+export type IconExtra =
+    | "grip" | "plus" | "check" | "clock" | "bell" | "lock" | "send" | "chart"
+    | "home" | "menu" | "close" | "chevron-right" | "chevron-down" | "chevron-up"
+    | "user" | "logout" | "accessibility" | "sun" | "moon" | "arrow-up"
+    | "refresh" | "eye" | "eye-off" | "filter" | "download" | "grid" | "list"
+    | "sparkle" | "wallet" | "piggy" | "shield";
 
 // Set inline de iconos stroke (24x24, currentColor) para los 15 IconType
 // del plan. Sin dependencias, con aria-hidden (decorativos: el texto
@@ -44,6 +49,29 @@ const EXTRAS: Record<IconExtra, React.ReactNode> = {
     lock: (<><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>),
     send: (<path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" />),
     chart: (<path d="M4 20h16M7 16v-4m5 4V8m5 8v-6" />),
+    home: (<><path d="m3 11 9-8 9 8" /><path d="M5 10v10h5v-6h4v6h5V10" /></>),
+    menu: (<path d="M4 7h16M4 12h16M4 17h16" />),
+    close: (<path d="M6 6l12 12M18 6 6 18" />),
+    "chevron-right": (<path d="m9 5 7 7-7 7" />),
+    "chevron-down": (<path d="m5 9 7 7 7-7" />),
+    "chevron-up": (<path d="m5 15 7-7 7 7" />),
+    user: (<><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" /></>),
+    logout: (<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5M21 12H9" /></>),
+    accessibility: (<><circle cx="12" cy="4.5" r="1.8" /><path d="M4.5 8.5 12 10l7.5-1.5M12 10v5m0 0-3 6m3-6 3 6" /></>),
+    sun: (<><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4" /></>),
+    moon: (<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" />),
+    "arrow-up": (<path d="M12 20V4m0 0-7 7m7-7 7 7" />),
+    refresh: (<><path d="M20 12a8 8 0 1 1-2.3-5.6" /><path d="M20 4v5h-5" /></>),
+    eye: (<><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z" /><circle cx="12" cy="12" r="2.8" /></>),
+    "eye-off": (<><path d="M4 4l16 16" /><path d="M9.9 5.9A9.9 9.9 0 0 1 12 5.5c6.5 0 10 6.5 10 6.5a17 17 0 0 1-3.2 4.1M6.3 8.1A16.6 16.6 0 0 0 2 12s3.5 6.5 10 6.5c1 0 2-.2 2.8-.5" /><path d="M9.5 10a2.8 2.8 0 0 0 4 4" /></>),
+    filter: (<path d="M3 5h18l-7 8v6l-4-2v-4L3 5z" />),
+    download: (<><path d="M12 3v12m0 0 5-5m-5 5-5-5" /><path d="M4 21h16" /></>),
+    grid: (<><rect x="3" y="3" width="8" height="8" rx="1.5" /><rect x="13" y="3" width="8" height="8" rx="1.5" /><rect x="3" y="13" width="8" height="8" rx="1.5" /><rect x="13" y="13" width="8" height="8" rx="1.5" /></>),
+    list: (<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />),
+    sparkle: (<><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" /><path d="M19 15.5 20 18l2.5 1-2.5 1-1 2.5-1-2.5L15 19l2.5-1 1-2.5z" /></>),
+    wallet: (<><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M16.5 14.5h.01" /></>),
+    piggy: (<><path d="M4 12a6 5 0 0 1 6-5h3a6 5 0 0 1 6 5v2h1v3h-2.2A6 5 0 0 1 13 19h-2a6 5 0 0 1-4.8-2.4H4v-3h.3A6 6 0 0 1 4 12z" /><path d="M15.5 11h.01" /></>),
+    shield: (<><path d="M12 3 5 6v5.5c0 4.3 2.9 7.7 7 9.5 4.1-1.8 7-5.2 7-9.5V6l-7-3z" /><path d="m9 12 2 2 4-4" /></>),
 };
 
 const TONOS: Record<string, string> = {

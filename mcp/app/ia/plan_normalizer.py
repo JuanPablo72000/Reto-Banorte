@@ -1,7 +1,7 @@
 """
-Normalizador del ActionPlan crudo devuelto por Groq — parte de Guillermo.
+Normalizador del ActionPlan crudo devuelto por la IA — parte de Guillermo.
 
-Se ejecuta SIEMPRE antes de validar con pydantic (ver ia/groq_client.py).
+Se ejecuta SIEMPRE antes de validar con pydantic (ver ia/ia_client.py).
 No inventa datos nuevos: solo empareja lo que el modelo escribió contra el
 catálogo de valores que YA existen en schemas.py, y corrige errores de
 "ortografía"/formato usando similitud de texto (difflib, stdlib, sin
@@ -214,7 +214,7 @@ def _aplicar_valores_fijos_de_plantilla(accessibility: dict, template_id: str) -
     """Pisa SOLO los campos de senior_adaptations/visual_impairment_adaptations
     que también existen en el catálogo fijo (accessibility_templates.py),
     copiando el valor literal de la plantilla — nunca el que haya puesto el
-    modelo (Groq o Gemini). El resto de campos que exige el schema
+    modelo (DeepSeek o Gemini). El resto de campos que exige el schema
     (row_height, show_icons, show_balance_prominent, field_labels,
     audio_description, audio_confirmation) NO está en el catálogo: son
     contextuales a cada paso (ej. "show_balance_prominent" solo tiene
@@ -305,7 +305,7 @@ def _normalizar_suggested_action_arguments(arguments: dict) -> dict:
 
 def normalizar_plan(data: dict) -> dict:
     """Punto de entrada: recibe el dict crudo (ya parseado de JSON) que
-    devolvió Groq y regresa una copia con placeholders/intent/action_id
+    devolvió la IA y regresa una copia con placeholders/intent/action_id
     autocorregidos contra el catálogo de schemas.py. No muta 'data'."""
     if not isinstance(data, dict):
         return data

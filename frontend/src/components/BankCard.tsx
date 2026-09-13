@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import './BankCard.css';
+"use client";
+
+import { useState } from "react";
+import styles from "./BankCard.module.css";
+import { Icon } from "@/components/ui/Icon";
 
 interface BankCardProps {
   cardNumber?: string;
@@ -16,7 +19,7 @@ interface BankCardProps {
   accessibilityLabel?: string;
 }
 
-const BankCard: React.FC<BankCardProps> = ({
+export default function BankCard({
   cardNumber = '**** **** **** 1234',
   holderName = 'NOMBRE DEL TITULAR',
   expiryDate = 'MM/YY',
@@ -26,7 +29,7 @@ const BankCard: React.FC<BankCardProps> = ({
   cardType = 'debit',
   additionalInfo = [],
   accessibilityLabel = 'Tarjeta bancaria'
-}) => {
+}: BankCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const toggleExpand = () => {
@@ -47,8 +50,8 @@ const BankCard: React.FC<BankCardProps> = ({
   };
 
   return (
-    <div 
-      className={`bank-card-container ${isExpanded ? 'expanded' : ''}`}
+    <div
+      className={`${styles['bank-card-container']} ${isExpanded ? styles.expanded : ''}`}
       role="button"
       tabIndex={0}
       aria-expanded={isExpanded}
@@ -56,72 +59,74 @@ const BankCard: React.FC<BankCardProps> = ({
       onClick={toggleExpand}
       onKeyDown={handleKeyDown}
     >
-      <div className="bank-card">
+      <div className={styles['bank-card']}>
         {/* Parte frontal de la tarjeta */}
-        <div className="card-front">
-          <div className="card-header">
-            <div className="bank-logo">{bankName}</div>
-            <div className="card-type-icon">
-              {cardType === 'credit' ? '💳' : '🏦'}
+        <div className={styles['card-front']}>
+          <div className={styles['card-header']}>
+            <div className={styles['bank-logo']}>{bankName}</div>
+            <div className={styles['card-type-icon']} aria-hidden="true">
+              <Icon name={cardType === 'credit' ? 'card' : 'account'} size={28} />
             </div>
           </div>
-          
-          <div className="card-chip"></div>
-          
-          <div className="card-number">
+
+          <div className={styles['card-chip']} aria-hidden="true"></div>
+
+          <div className={styles['card-number']}>
             {formatCardNumber(cardNumber)}
           </div>
-          
-          <div className="card-details-row">
-            <div className="card-holder">
-              <span className="label">Titular</span>
-              <span className="value">{holderName.toUpperCase()}</span>
+
+          <div className={styles['card-details-row']}>
+            <div className={styles['card-holder']}>
+              <span className={styles.label}>Titular</span>
+              <span className={styles.value}>{holderName.toUpperCase()}</span>
             </div>
-            <div className="card-expiry">
-              <span className="label">Expira</span>
-              <span className="value">{expiryDate}</span>
+            <div className={styles['card-expiry']}>
+              <span className={styles.label}>Expira</span>
+              <span className={styles.value}>{expiryDate}</span>
             </div>
           </div>
-          
-          <div className="card-balance">
-            <span className="balance-label">Saldo disponible</span>
-            <span className="balance-amount">{balance}</span>
-            {currency && <span className="currency">{currency}</span>}
+
+          <div className={styles['card-balance']}>
+            <span className={styles['balance-label']}>Saldo disponible</span>
+            <span className={styles['balance-amount']}>{balance}</span>
+            {currency && <span className={styles.currency}>{currency}</span>}
           </div>
         </div>
 
         {/* Parte trasera / Información expandida */}
         {isExpanded && (
-          <div className="card-back" aria-live="polite">
-            <div className="expand-indicator">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <div className={styles['card-back']} aria-live="polite">
+            <div className={styles['expand-indicator']}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M18 15l-6-6-6 6"/>
               </svg>
               <span>Ver menos</span>
             </div>
-            
+
             {additionalInfo.length > 0 && (
-              <div className="additional-info">
+              <div className={styles['additional-info']}>
                 <h4>Información Adicional</h4>
                 <ul>
                   {additionalInfo.map((info, index) => (
                     <li key={index}>
-                      <span className="info-label">{info.label}:</span>
-                      <span className="info-value">{info.value}</span>
+                      <span className={styles['info-label']}>{info.label}:</span>
+                      <span className={styles['info-value']}>{info.value}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
-            
-            <div className="card-security-note">
-              <small>🔒 Información segura. Haz clic en la tarjeta para ocultar los detalles.</small>
+
+            <div className={styles['card-security-note']}>
+              <small>
+                <Icon name="lock" size={14} /> Información segura. Haz clic en la tarjeta para ocultar los detalles.
+              </small>
             </div>
           </div>
         )}
-        
+
         {!isExpanded && (
-          <div className="expand-hint">
+          <div className={styles['expand-hint']} aria-hidden="true">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 9l6 6 6-6"/>
             </svg>
@@ -131,6 +136,4 @@ const BankCard: React.FC<BankCardProps> = ({
       </div>
     </div>
   );
-};
-
-export default BankCard;
+}

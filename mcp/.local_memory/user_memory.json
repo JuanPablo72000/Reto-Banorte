@@ -12,12 +12,12 @@
     ],
     "clics": {},
     "intents_recientes": [
-      "view_balance",
       "view_debts",
       "view_balance",
       "view_transactions",
-      "view_balance"
+      "view_balance",
+      "make_transfer"
     ],
-    "actualizado_en": "2026-09-12T23:42:49+00:00"
+    "actualizado_en": "2026-09-13T05:20:42+00:00"
   }
 }

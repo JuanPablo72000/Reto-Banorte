@@ -9,16 +9,16 @@ import type { AnimationKind } from "@/lib/types/action-plan";
 export type { AnimationKind };
 
 export function attrsAnimacion(animation?: string | null, displayOrder?: number | null): {
-    "data-animation"?: AnimationKind;
+    "data-animation": AnimationKind;
     style?: CSSProperties;
 } {
-    const out: { "data-animation"?: AnimationKind; style?: CSSProperties } = {};
-    if (animation === "fade" || animation === "slide" || animation === "pulse") {
-        out["data-animation"] = animation;
-    }
+    // Todo entra animado: si la IA no pide slide/pulse, se usa fade con
+    // stagger por orden (reduced-motion lo apaga el CSS global).
+    const anim: AnimationKind =
+        animation === "slide" || animation === "pulse" ? animation : "fade";
     const orden = typeof displayOrder === "number" ? displayOrder : 0;
-    if (orden > 0 || out["data-animation"]) {
-        out.style = { "--orden": String(orden) } as CSSProperties;
-    }
-    return out;
+    return {
+        "data-animation": anim,
+        style: { "--orden": String(orden) } as CSSProperties,
+    };
 }
