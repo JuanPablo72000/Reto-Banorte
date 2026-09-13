@@ -1,5 +1,5 @@
 """
-REPL interactivo — GroqPlanner + memoria de usuario — NO es parte del
+REPL interactivo — PlannerIA + memoria de usuario — NO es parte del
 servidor MCP ni del cliente MCP.
 
 A diferencia de test_local.py / test_local_accessibility.py (listas
@@ -20,7 +20,7 @@ COMANDOS (además de escribir un mensaje normal):
                          SIN llamar al modelo -- para simular lo que
                          mandaría el frontend antes del próximo mensaje
   /memoria              muestra el perfil de memoria del usuario activo
-                         (sin llamar a Groq)
+                          (sin llamar a la IA)
   /reset                borra la memoria del usuario activo
   /ayuda                vuelve a mostrar esta lista de comandos
   /salir  (o /exit)     termina el REPL
@@ -39,7 +39,7 @@ import logging
 
 from dotenv import load_dotenv
 
-load_dotenv()  # carga GROQ_API_KEY del .env ANTES de importar groq_client
+load_dotenv()  # carga DEEPSEEK_API_KEY del .env ANTES de importar ia_client
 
 from app.ia.planner_con_memoria import PlannerConMemoria
 from app.logging_config import setup_logging
@@ -69,7 +69,7 @@ async def main() -> None:
     id_user_activo = 1
 
     print("=" * 60)
-    print("REPL — GroqPlanner con memoria de usuario")
+    print("REPL — PlannerIA con memoria de usuario")
     print("Usuario activo: id_user =", id_user_activo)
     print("Escribe /ayuda para ver los comandos disponibles.")
     print("=" * 60)

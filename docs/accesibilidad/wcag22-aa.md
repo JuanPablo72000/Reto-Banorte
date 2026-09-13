@@ -1,7 +1,7 @@
 # Accesibilidad — WCAG 2.2 Nivel AA por componente
 
 > Alcance decidido: checklist por componente. Cubre los 14 componentes A2UI del contrato (`contracts/a2ui/a2ui-mcp-contract.yaml`) + `AccessibilityPanel` + los 2 propuestos (`PurchaseList`, `StatementPurchases`).
-> Estado del código: accesibilidad = persistencia + CRUD de `AccessibilityPreference` en backend; **frontend sin implementar** (0 `aria-*`, 0 WCAG). Este doc es la especificación a cumplir.
+> Estado del código (actualizado): frontend implementado — foco visible global, targets ≥ 44px, `aria-live` en respuestas/errores, `prefers-reduced-motion` + `data-reduced-motion`, paletas y plantillas de accesibilidad (`A11yProvider` + panel oculto), tablas con `caption` y gráficas con `accessibility_label`. El checklist de abajo sigue siendo la referencia de aceptación.
 
 ## Criterios globales (aplican a todos los componentes)
 

@@ -38,7 +38,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
 
-load_dotenv()  # GROQ/GEMINI/BANORTE_* del .env ANTES de importar clientes
+load_dotenv()  # DEEPSEEK/GEMINI/BANORTE_* del .env ANTES de importar clientes
 
 from app import tools  # noqa: E402
 from app.ia.planner_con_memoria import PlannerConMemoria  # noqa: E402

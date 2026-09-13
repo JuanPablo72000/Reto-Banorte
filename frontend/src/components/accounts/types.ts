@@ -24,23 +24,27 @@ export const ACCOUNT_STATUS_LABELS: Record<AccountStatus, string> = {
 };
 
 // Metadata adicional por cuenta, keyed por el mismo id que usa balance/MOCK_BALANCES.
-// TODO(unificación futura): cuando exista lib/types.ts central, esto se une
-// directo al objeto de cuenta que devuelva Cain.
+// Refleja las 4 cuentas del seed rico (DbSeeder.cs / mock_data.py).
 const ACCOUNT_META: Record<string, AccountMeta> = {
     "acc-1": {
         accountType: "checking",
         status: "active",
-        createdAt: "2023-02-14",
+        createdAt: "2026-06-15",
     },
     "acc-2": {
         accountType: "savings",
         status: "active",
-        createdAt: "2022-11-01",
+        createdAt: "2026-06-15",
     },
     "acc-3": {
-        accountType: "credit",
+        accountType: "checking",
+        status: "active",
+        createdAt: "2026-08-13",
+    },
+    "acc-4": {
+        accountType: "checking",
         status: "blocked",
-        createdAt: "2024-06-20",
+        createdAt: "2024-10-13",
     },
 };
 

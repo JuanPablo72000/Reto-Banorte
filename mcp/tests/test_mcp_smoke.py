@@ -22,7 +22,7 @@ Uso (desde la carpeta mcp/, con el venv activo):
     python tests/test_mcp_smoke.py --con-escritura # + transferencia $1 real
 
 Requiere: API en BANORTE_API_BASE_URL (default http://localhost:8000,
-docker) y mcp/.env con GROQ_API_KEY y/o GEMINI_API_KEY (solo Fase B).
+docker) y mcp/.env con DEEPSEEK_API_KEY y/o GEMINI_API_KEY (solo Fase B).
 """
 
 from __future__ import annotations

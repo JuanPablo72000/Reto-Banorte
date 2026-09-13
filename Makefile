@@ -1,4 +1,4 @@
-.PHONY: up down reset seed logs api mcp frontend demo demo-abajo demo-logs demo-reset
+.PHONY: up down reset seed logs api mcp frontend demo demo-abajo demo-logs demo-reset demo-reiniciar
 
 up:
 	docker compose up --build
@@ -37,6 +37,9 @@ demo:
 
 demo-abajo:
 	docker compose down
+
+demo-reiniciar:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/demo.ps1 -Reiniciar $(SERVICIOS)
 
 demo-logs:
 	docker compose logs -f

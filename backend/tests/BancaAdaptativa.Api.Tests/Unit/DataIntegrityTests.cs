@@ -140,12 +140,16 @@ public class DataIntegrityTests
         Assert.NotEmpty(t.Db.Sessions.AsNoTracking().ToList());
         Assert.NotEmpty(t.Db.AuditLogs.AsNoTracking().ToList());
         Assert.NotEmpty(t.Db.MemoryEvents.AsNoTracking().ToList());
-        var transfer = t.Db.Transfers.AsNoTracking().Single();
-        Assert.Equal("pending", transfer.Status); // mata: seed con confirmed
-        Assert.Null(transfer.ConfirmedAt);
+        // Simulaciones: siempre hay transferencias pendientes confirmables.
+        var pendientes = t.Db.Transfers.AsNoTracking().Where(x => x.Status == "pending").ToList();
+        Assert.NotEmpty(pendientes);
+        Assert.All(pendientes, p => Assert.Null(p.ConfirmedAt));
+        Assert.Contains(t.Db.Transfers.AsNoTracking(), x => x.Status == "confirmed" && x.ConfirmedAt != null);
+        Assert.Contains(t.Db.SavingsGoals.AsNoTracking(), g => g.Status == "active");
+        Assert.Contains(t.Db.CreditCards.AsNoTracking(), c => c.Status == "active" && c.AvailableCredit > 0);
     }
 
-    [Fact] // mata ~40 supervivientes String/Boolean del seed en una sola pasada
+    [Fact] // invariantes estables del seed rico (usuario demo, cuentas, ledger, memoria)
     public void Seeder_Snapshot_ValoresDemo()
     {
         using var t = new TestDb();
@@ -170,62 +174,95 @@ public class DataIntegrityTests
         Assert.True(prefs.LargeTargets);
         Assert.True(prefs.PlainLanguage);
 
-        var account = t.Db.Accounts.AsNoTracking().Single();
-        Assert.Equal("debito", account.AccountType);
-        Assert.Equal("Nómina", account.Alias);
-        Assert.Equal("****1234", account.MaskedNumber);
-        Assert.Equal("MXN", account.Currency);
-        Assert.Equal("active", account.Status);
+        // Nómina es la primera cuenta (id_account 1 en BD fresca: el contexto
+        // del frontend/MCP usa id_account=1).
+        var accounts = t.Db.Accounts.AsNoTracking().OrderBy(a => a.IdAccount).ToList();
+        Assert.Equal(4, accounts.Count);
+        var nomina = accounts[0];
+        Assert.Equal("debito", nomina.AccountType);
+        Assert.Equal("Nómina", nomina.Alias);
+        Assert.Equal("****1234", nomina.MaskedNumber);
+        Assert.Equal("MXN", nomina.Currency);
+        Assert.Equal("active", nomina.Status);
+        Assert.Contains(accounts, a => a.Status == "blocked");
 
-        var txs = t.Db.Transactions.AsNoTracking().OrderBy(x => x.IdTransaction).ToList();
-        Assert.Equal(3, txs.Count);
-        var today = DateOnly.FromDateTime(TestDb.FixedNow.UtcDateTime.Date);
-        Assert.Equal(today.AddDays(-2), txs[0].Date); // mata #77 (+2)
-        Assert.Equal(today.AddDays(-1), txs[1].Date); // mata #84 (+1)
-        Assert.Equal(today, txs[2].Date);
-        Assert.Equal("credit", txs[0].Direction);
-        Assert.Equal("nomina", txs[0].Category);
-        Assert.Equal("Pago nómina", txs[0].Description);
-        Assert.Equal("posted", txs[0].Status);
-        Assert.Equal("NOM-001", txs[0].Reference);
-        Assert.Equal("debit", txs[1].Direction);
-        Assert.Equal("super", txs[1].Category);
-        Assert.Equal("Súper", txs[1].Description);
-        Assert.Equal("SUP-002", txs[1].Reference);
-        Assert.Equal("transporte", txs[2].Category);
-        Assert.Equal("Transporte", txs[2].Description);
-        Assert.Equal("TRN-003", txs[2].Reference);
+        // Ledger rico: cientos de movimientos con variedad de estados,
+        // direcciones y categorías; saldos coherentes con el cierre diario.
+        var txs = t.Db.Transactions.AsNoTracking().ToList();
+        Assert.True(txs.Count > 100, $"esperados >100 movimientos, obtuvo {txs.Count}");
+        Assert.Contains(txs, x => x.Direction == "credit" && x.Category == "nomina" && x.Description == "Pago nómina quincenal");
+        Assert.Contains(txs, x => x.Status == "pending");
+        Assert.Contains(txs, x => x.Status == "failed");
+        Assert.Contains(txs, x => x.Direction == "debit" && x.Category == "pago_tarjeta");
+        Assert.Contains(txs, x => x.IdExpenseCategory != null);
 
-        var transfer = t.Db.Transfers.AsNoTracking().Single();
-        Assert.Equal("Mamá", transfer.DestinationAlias);
+        foreach (var acc in accounts.Where(a => a.Status == "active" && a.Alias != "Cuenta antigua"))
+        {
+            var ultimo = t.Db.DailyBalances.AsNoTracking()
+                .Where(d => d.IdAccount == acc.IdAccount)
+                .OrderByDescending(d => d.Date)
+                .FirstOrDefault();
+            Assert.NotNull(ultimo);
+            Assert.Equal(ultimo!.ClosingBalance, acc.Balance); // saldo == cierre del ledger
+        }
+
+        // Transferencias: la clásica pendiente "Mamá" sigue existiendo y es confirmable.
+        var transfer = t.Db.Transfers.AsNoTracking()
+            .Single(x => x.Status == "pending" && x.DestinationAlias == "Mamá" && x.Concept == "Apoyo");
         Assert.Equal("****5678", transfer.DestinationMasked);
         Assert.Equal("MXN", transfer.Currency);
-        Assert.Equal("Apoyo", transfer.Concept);
+        Assert.Null(transfer.ConfirmedAt);
+        Assert.Contains(t.Db.Transfers.AsNoTracking(), x => x.Status == "rejected");
 
-        var confirmation = t.Db.TransferConfirmations.AsNoTracking().Single();
+        var confirmation = t.Db.TransferConfirmations.AsNoTracking()
+            .Single(c => c.IdTransfer == transfer.IdTransfer);
         Assert.Equal("app", confirmation.Method);
         Assert.Equal("pending", confirmation.Status);
 
-        var session = t.Db.Sessions.AsNoTracking().Single();
-        Assert.Equal("web", session.DeviceContext);
+        // Conciliación: matched + pending + unmatched.
+        var matches = t.Db.ReconciliationMatches.AsNoTracking().ToList();
+        Assert.Contains(matches, m => m.Status == "matched");
+        Assert.Contains(matches, m => m.Status == "pending");
+        Assert.Contains(matches, m => m.Status == "unmatched");
 
-        var detected = t.Db.DetectedPreferences.AsNoTracking().Single();
-        Assert.Equal("fontScale", detected.PreferenceType);
-        Assert.Equal("1.25", detected.Value);
+        // Finanzas personales variadas.
+        Assert.Equal(3, t.Db.CreditCards.AsNoTracking().Count());
+        Assert.Equal(5, t.Db.SavingsGoals.AsNoTracking().Count());
+        Assert.Equal(4, t.Db.SavingsGoals.AsNoTracking().Count(g => g.Status == "active"));
+        var hoy = DateOnly.FromDateTime(TestDb.FixedNow.UtcDateTime.Date);
+        Assert.Contains(t.Db.Budgets.AsNoTracking(), b => b.Month == hoy.Month && b.Year == hoy.Year);
+        Assert.Contains(t.Db.Budgets.AsNoTracking(), b => b.Status == "exceeded");
+        Assert.Contains(t.Db.Statements.AsNoTracking(), s => s.AccountType == "debito" && s.Status == "generated");
+        Assert.Contains(t.Db.Statements.AsNoTracking(), s => s.AccountType == "credito" && s.Status == "generated");
+        Assert.NotEmpty(t.Db.StatementExpenses.AsNoTracking().ToList());
 
-        var memory = t.Db.MemoryEvents.AsNoTracking().Single();
-        Assert.Equal("zoom", memory.EventType);
-        Assert.Equal("aumentar-legibilidad", memory.Intent);
-        Assert.Equal("balance-card", memory.TargetElement);
-        Assert.Equal("usuario amplía texto", memory.RedactedSummary);
-        Assert.Equal("low", memory.SensitivityLevel);
+        // Memoria variada.
+        Assert.Equal(3, t.Db.Sessions.AsNoTracking().Count());
+        Assert.Contains(t.Db.Sessions.AsNoTracking(), s => s.DeviceContext == "web");
+        Assert.Contains(t.Db.Sessions.AsNoTracking(), s => s.DeviceContext == "android");
 
-        var audit = t.Db.AuditLogs.AsNoTracking().Single();
-        Assert.Equal("seed", audit.Action);
+        Assert.Contains(t.Db.DetectedPreferences.AsNoTracking(),
+            d => d.PreferenceType == "fontScale" && d.Value == "1.25");
+        Assert.True(t.Db.DetectedPreferences.AsNoTracking().Count() >= 3);
+
+        var memories = t.Db.MemoryEvents.AsNoTracking().ToList();
+        Assert.True(memories.Count >= 5);
+        Assert.Contains(memories, m => m.EventType == "zoom" && m.Intent == "aumentar-legibilidad"
+            && m.TargetElement == "balance-card" && m.RedactedSummary == "usuario amplía texto"
+            && m.SensitivityLevel == "low");
+        Assert.Contains(memories, m => m.EventType == "contrast");
+        Assert.Contains(memories, m => m.EventType == "motion");
+
+        var audit = t.Db.AuditLogs.AsNoTracking().Single(a => a.Action == "seed");
         Assert.Equal("database", audit.Resource);
         Assert.Equal("ok", audit.Result);
         Assert.Equal("low", audit.RiskLevel);
         Assert.Equal("seed inicial", audit.RedactedPayload);
+        Assert.Contains(t.Db.AuditLogs.AsNoTracking(), a => a.Action == "transfer.confirm");
+
+        // UTC en todo el grafo.
+        Assert.All(t.Db.Users.AsNoTracking(), u => Assert.Equal(DateTimeKind.Utc, u.CreatedAt.Kind));
+        Assert.All(t.Db.Transfers.AsNoTracking(), x => Assert.Equal(DateTimeKind.Utc, x.CreatedAt.Kind));
     }
 
     [Fact] // mata #24: índice único de email

@@ -114,6 +114,14 @@ export interface VisualTheme {
     icon_style: string;
 }
 
+export interface Visualization {
+    type: "bar" | "line" | "pie" | "donut" | "area" | "bank_card";
+    title: string;
+    data: Record<string, unknown>[];
+    description: string;
+    accessibility_label: string;
+}
+
 export interface ActionPlanUI {
     intent: string;
     response_to_user: string;
@@ -125,6 +133,7 @@ export interface ActionPlanUI {
     contextual_tips: string[];
     accessibility_recommendations: string[];
     visual_theme: VisualTheme;
+    visualizations: Visualization[];
     depuracion?: { modelo: string | null; correcciones: string[] };
     error?: string;
 }

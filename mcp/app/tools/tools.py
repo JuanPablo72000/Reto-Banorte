@@ -30,7 +30,7 @@ metas, eso lo hace el usuario desde la UI.
 
 Excepción: search_memory_context sigue siendo 100% mock (no existe
 /memory/query en Endpoints/*.cs todavía) y planificar_accion usa
-GroqPlanner (no toca la API de banca).
+PlannerIA (no toca la API de banca).
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ from datetime import date, datetime
 from typing import Awaitable, Callable, Optional, TypeVar
 
 from app.placeholders import mock_data
-from app.ia.groq_client import GroqPlanner
+from app.ia.ia_client import PlannerIA
 from app.integration.connection import api_mode, call_api
 from app.schemas import (
     AccessibilityPreference,
@@ -65,8 +65,8 @@ from app.schemas import (
 
 logger = logging.getLogger("mcp_ia.tools")
 
-# Un solo GroqPlanner por proceso: reutiliza el cliente AsyncGroq entre llamadas.
-_planner = GroqPlanner()
+# Un solo PlannerIA por proceso: reutiliza el cliente HTTP/IA entre llamadas.
+_planner = PlannerIA()
 
 _MODE = api_mode()
 

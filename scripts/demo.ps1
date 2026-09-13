@@ -1,10 +1,13 @@
 <# Lanzador de la demo en Windows (sin make).
 Uso:
-    powershell -ExecutionPolicy Bypass -File scripts/demo.ps1            # levanta todo y muestra el link
-    powershell -ExecutionPolicy Bypass -File scripts/demo.ps1 -SoloEsperar  # solo espera y verifica (usado por `make demo`)
-    powershell -ExecutionPolicy Bypass -File scripts/demo.ps1 -Abajo     # apaga conservando la DB demo
+    powershell -ExecutionPolicy Bypass -File scripts/demo.ps1                       # levanta todo y muestra el link
+    powershell -ExecutionPolicy Bypass -File scripts/demo.ps1 -SoloEsperar           # solo espera y verifica (usado por `make demo`)
+    powershell -ExecutionPolicy Bypass -File scripts/demo.ps1 -Abajo                # apaga conservando la DB demo
+    powershell -ExecutionPolicy Bypass -File scripts/demo.ps1 -Reiniciar            # rebuild+recreate TODO y verifica
+    powershell -ExecutionPolicy Bypass -File scripts/demo.ps1 -Reiniciar frontend   # rebuild+recreate solo frontend
+    powershell -ExecutionPolicy Bypass -File scripts/demo.ps1 -Reiniciar mcp,frontend
 #>
-param([switch]$SoloEsperar, [switch]$Abajo)
+param([switch]$SoloEsperar, [switch]$Abajo, [switch]$Reiniciar, [string[]]$Servicios = @())
 
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
@@ -33,7 +36,23 @@ if ($Abajo) {
     exit 0
 }
 
-if (-not $SoloEsperar) {
+if ($Reiniciar) {
+    # Reconstruye imágenes y recrea contenedores para tomar cambios de
+    # código y del .env. Sin servicios = los 3 (api, mcp, frontend).
+    # Ejemplos: -Reiniciar frontend | -Reiniciar mcp,frontend
+    # NOTA: se pasa $lista SIN @splat a propósito (@lista parte strings
+    # en caracteres cuando el script corre vía `powershell -File`).
+    $lista = @($Servicios | Where-Object { $_ } | ForEach-Object { $_ -split '[,\s]+' } | Where-Object { $_ })
+    Write-Output "Reiniciando con cambios: $(if ($lista.Count -gt 0) { $lista -join ', ' } else { 'todo' })"
+    if ($lista.Count -gt 0) {
+        docker compose up -d --build --force-recreate $lista
+    } else {
+        docker compose up -d --build --force-recreate
+    }
+    if ($LASTEXITCODE -ne 0) { exit 1 }
+}
+
+if (-not $SoloEsperar -and -not $Reiniciar) {
     docker compose up --build -d
 }
 
@@ -48,6 +67,8 @@ if ($ok) {
     Write-Output "Listo para entrar -> http://localhost:3000 (chat)"
     Write-Output "API: http://localhost:8000/health | MCP: http://localhost:8080"
 } else {
-    Write-Output "Algo no levantó: revisa con 'docker compose logs' o 'make demo-logs'"
+    Write-Output "Algo no levantó: últimos logs:"
+    docker compose logs --tail 30
+    Write-Output "Más detalle: 'docker compose logs <servicio>' o 'make demo-logs'"
     exit 1
 }
