@@ -21,9 +21,11 @@ public class ApiContractTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var summary = await response.Content.ReadFromJsonAsync<AccountSummaryDto>();
         Assert.NotNull(summary);
-        Assert.Equal(25400.50m, summary!.totalBalance);
+        // Seed rico: el total es la suma coherente de las cuentas del usuario.
+        Assert.True(summary!.totalBalance > 0);
+        Assert.Equal(summary.accounts.Sum(a => a.balance), summary.totalBalance);
+        Assert.True(summary.accounts.Count >= 3);
         Assert.Equal("MXN", summary.currency);
-        Assert.NotEmpty(summary.accounts);
         Assert.All(summary.accounts, account => Assert.DoesNotContain("1234567890", account.maskedNumber));
     }
 

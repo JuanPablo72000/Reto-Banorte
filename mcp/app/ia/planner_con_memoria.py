@@ -120,6 +120,6 @@ class PlannerConMemoria:
         await self.memoria.actualizar_accesibilidad(
             id_user, plan.accessibility_template, motivo=user_message
         )
-        await self.memoria.registrar_intent(id_user, plan.intent)
+        await self.memoria.registrar_intent(id_user, plan.intent, mensaje=user_message)
 
         return plan

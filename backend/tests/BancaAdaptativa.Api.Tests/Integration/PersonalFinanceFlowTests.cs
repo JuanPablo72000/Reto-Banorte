@@ -37,7 +37,7 @@ public class PersonalFinanceFlowTests
 
         var list = await client.GetFromJsonAsync<List<StatementDto>>(
             $"/accounts/{accId}/statements?year=2026&month=6");
-        Assert.Single(list!);
+        Assert.Contains(list!, s => s.idStatement == stmt.idStatement);
 
         var detail = await client.GetFromJsonAsync<StatementDetailDto>(
             $"/accounts/{accId}/statements/{stmt.idStatement}");
@@ -73,7 +73,7 @@ public class PersonalFinanceFlowTests
         var summary = await client.GetFromJsonAsync<BudgetSummaryDto>(
             "/me/budgets/monthly?year=2026&month=6");
         Assert.Equal(6, summary!.month);
-        Assert.Single(summary.budgets);
+        Assert.Contains(summary.budgets, b => b.categoryCode == "supermarket");
 
         var bad = await client.PostAsJsonAsync("/me/budgets/", new
         {

@@ -66,8 +66,11 @@ DEFAULT_MEMORY_PATH = os.path.join(
 # Cuántos intents/cambios de accesibilidad se guardan como máximo por
 # usuario. Es memoria de continuidad de CORTO plazo, no un log completo
 # (para eso están AuditLog/MemoryEvent del backend real — ver schemas.py).
-MAX_INTENTS_RECIENTES = 5
-MAX_HISTORIAL_ACCESIBILIDAD = 5
+MAX_INTENTS_RECIENTES = 10
+MAX_HISTORIAL_ACCESIBILIDAD = 8
+MAX_MENSAJES_RECIENTES = 6
+MAX_NOTAS = 8
+MAX_LARGO_MENSAJE = 140
 
 
 def _ahora_iso() -> str:
@@ -83,6 +86,12 @@ class PerfilMemoriaUsuario:
     accessibility_historial: list[dict] = field(default_factory=list)
     clics: dict[str, int] = field(default_factory=dict)
     intents_recientes: list[str] = field(default_factory=list)
+    # Últimos mensajes del usuario con su intent y fecha (continuidad rica:
+    # la IA puede referirse a lo que el usuario pidió hace un par de turnos).
+    ultimos_mensajes: list[dict] = field(default_factory=list)
+    # Notas libres clave->valor (destinos frecuentes de transferencia,
+    # preferencias declaradas, etc.). Las escribe el orquestador/IA.
+    notas: dict[str, str] = field(default_factory=dict)
     actualizado_en: str = field(default_factory=_ahora_iso)
 
     def to_dict(self) -> dict:
@@ -96,6 +105,8 @@ class PerfilMemoriaUsuario:
             accessibility_historial=data.get("accessibility_historial", []),
             clics=data.get("clics", {}),
             intents_recientes=data.get("intents_recientes", []),
+            ultimos_mensajes=data.get("ultimos_mensajes", []),
+            notas=data.get("notas", {}),
             actualizado_en=data.get("actualizado_en", _ahora_iso()),
         )
 
@@ -160,18 +171,25 @@ class MemoriaUsuarioStore:
         """Dict listo para mezclarse en el "context" que se le pasa a
         PlannerIA.plan() (ver regla 14 del SYSTEM_INSTRUCTION en
         ia_client.py). Se manda TAL CUAL dentro del JSON del prompt,
-        así que se mantiene chico a propósito: solo el top N de clics y
-        los últimos N intents, no el historial completo."""
+        así que se mantiene chico a propósito: solo el top N de clics,
+        los últimos N intents, 3 mensajes recientes y hasta 5 notas."""
         async with self._lock:
             perfil = self._obtener_o_crear(id_user)
             clics_top = dict(
                 sorted(perfil.clics.items(), key=lambda kv: kv[1], reverse=True)[:top_n_clics]
             )
+            mensajes = [
+                {"mensaje": m.get("mensaje", ""), "intent": m.get("intent", "")}
+                for m in perfil.ultimos_mensajes[-3:]
+            ]
+            notas = dict(list(perfil.notas.items())[:5])
             return {
                 "memoria_usuario": {
                     "accessibility_template_previo": perfil.accessibility_template_actual,
                     "clics_frecuentes": clics_top,
                     "intents_recientes": perfil.intents_recientes[-MAX_INTENTS_RECIENTES:],
+                    "mensajes_recientes": mensajes,
+                    "notas": notas,
                 }
             }
 
@@ -227,11 +245,35 @@ class MemoriaUsuarioStore:
                 self._guardar_en_disco()
             return perfil
 
-    async def registrar_intent(self, id_user: int, intent: str) -> PerfilMemoriaUsuario:
+    async def registrar_intent(self, id_user: int, intent: str, mensaje: str = "") -> PerfilMemoriaUsuario:
+        """Registra el intent del turno y, si se pasa, un extracto del
+        mensaje del usuario (recortado a MAX_LARGO_MENSAJE) para dar
+        continuidad conversacional más rica entre turnos."""
         async with self._lock:
             perfil = self._obtener_o_crear(id_user)
             perfil.intents_recientes.append(intent)
             perfil.intents_recientes = perfil.intents_recientes[-MAX_INTENTS_RECIENTES:]
+            texto = (mensaje or "").strip()[:MAX_LARGO_MENSAJE]
+            if texto:
+                perfil.ultimos_mensajes.append({
+                    "mensaje": texto,
+                    "intent": intent,
+                    "en": _ahora_iso(),
+                })
+                perfil.ultimos_mensajes = perfil.ultimos_mensajes[-MAX_MENSAJES_RECIENTES:]
+            perfil.actualizado_en = _ahora_iso()
+            self._guardar_en_disco()
+            return perfil
+
+    async def registrar_nota(self, id_user: int, clave: str, valor: str) -> PerfilMemoriaUsuario:
+        """Guarda una nota libre clave->valor (ej. "destino_frecuente":
+        "Mamá ****5678"). Sobrescribe la clave si ya existía; recorta a
+        MAX_NOTAS entradas (FIFO por inserción)."""
+        async with self._lock:
+            perfil = self._obtener_o_crear(id_user)
+            perfil.notas[clave.strip()[:60]] = (valor or "").strip()[:200]
+            if len(perfil.notas) > MAX_NOTAS:
+                perfil.notas = dict(list(perfil.notas.items())[-MAX_NOTAS:])
             perfil.actualizado_en = _ahora_iso()
             self._guardar_en_disco()
             return perfil

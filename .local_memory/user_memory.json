@@ -1,23 +1,90 @@
 {
   "1": {
     "id_user": 1,
-    "accessibility_template_actual": "low_vision",
+    "accessibility_template_actual": "default",
     "accessibility_historial": [
       {
         "template": "low_vision",
         "template_anterior": "default",
         "motivo": "Oye, no veo bien, dame una interfaz con la letra grande porfa",
-        "actualizado_en": "2026-09-12T14:44:59+00:00"
+        "actualizado_en": "2026-09-10T16:20:00+00:00"
+      },
+      {
+        "template": "color_blind_deuteranopia",
+        "template_anterior": "low_vision",
+        "motivo": "Confundo los colores rojo y verde en las gráficas",
+        "actualizado_en": "2026-09-11T18:02:00+00:00"
+      },
+      {
+        "template": "default",
+        "template_anterior": "color_blind_deuteranopia",
+        "motivo": "Ya no necesito ajustes, vuelve a lo normal",
+        "actualizado_en": "2026-09-12T15:44:00+00:00"
       }
     ],
-    "clics": {},
+    "clics": {
+      "get_all_transactions": 12,
+      "get_account_summary": 9,
+      "prepare_transfer": 7,
+      "get_budgets_monthly": 6,
+      "get_expense_categories": 5,
+      "get_savings_goals": 4,
+      "get_credit_cards": 3,
+      "get_statements": 2,
+      "get_daily_balance": 2,
+      "get_reconciliation_status": 1
+    },
     "intents_recientes": [
-      "adjust_interface",
+      "view_balance",
+      "view_transactions",
       "make_transfer",
+      "view_budgets",
+      "analyze_expenses",
       "view_balance",
-      "view_balance",
-      "view_balance"
+      "view_cards",
+      "make_transfer",
+      "view_goals",
+      "view_transactions"
     ],
-    "actualizado_en": "2026-09-12T15:35:19+00:00"
+    "ultimos_mensajes": [
+      {
+        "mensaje": "¿Cuánto tengo en mi cuenta de nómina?",
+        "intent": "view_balance",
+        "en": "2026-09-12T15:30:00+00:00"
+      },
+      {
+        "mensaje": "Muéstrame mis movimientos de la última semana",
+        "intent": "view_transactions",
+        "en": "2026-09-12T15:33:00+00:00"
+      },
+      {
+        "mensaje": "Transfiere 2000 a Mamá por apoyo",
+        "intent": "make_transfer",
+        "en": "2026-09-12T15:35:00+00:00"
+      },
+      {
+        "mensaje": "¿Cómo van mis presupuestos del mes?",
+        "intent": "view_budgets",
+        "en": "2026-09-13T00:41:00+00:00"
+      },
+      {
+        "mensaje": "Analiza mis gastos por categoría",
+        "intent": "analyze_expenses",
+        "en": "2026-09-13T00:45:00+00:00"
+      },
+      {
+        "mensaje": "¿Qué tarjetas de crédito tengo y cuánto debo?",
+        "intent": "view_cards",
+        "en": "2026-09-13T05:18:00+00:00"
+      }
+    ],
+    "notas": {
+      "destino_frecuente": "Mamá ****5678 (apoyo mensual ~2000 MXN)",
+      "segundo_destino": "Luis (hermano) ****3377",
+      "dia_preferido_pago_tarjeta": "un día después del corte",
+      "categoria_mayor_gasto": "supermercados y restaurantes",
+      "meta_prioritaria": "Viaje a Japón"
+    },
+    "actualizado_en": "2026-09-13T05:20:42+00:00"
   }
 }
