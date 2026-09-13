@@ -3,8 +3,8 @@
 import { useState, FormEvent } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { LoadingState } from "@/components/states/LoadingState";
 import { ErrorState } from "@/components/states/ErrorState";
+import { ChatSkeleton } from "./ChatSkeleton";
 import { PlanRenderer } from "./PlanRenderer";
 import type { ActionPlanUI, ChatContext, SuggestedAction } from "@/lib/types/action-plan";
 import { WELCOME_TEXT } from "./types";
@@ -66,7 +66,7 @@ export function ChatWindow() {
                         {WELCOME_TEXT}
                     </h1>
                 )}
-                {cargando && <LoadingState />}
+                {cargando && <ChatSkeleton />}
                 {error && <ErrorState description={error} onRetry={() => ultimoMensaje && void enviar(ultimoMensaje)} />}
                 {plan && !cargando && !error && (
                     <PlanRenderer plan={plan} onSugerencia={handleSugerencia} onConfirmar={handleConfirmar} />

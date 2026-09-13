@@ -57,3 +57,54 @@
   --color-warning-bg: #7A7A7A;
   --color-warning-text: #1E2229;
 }
+
+/* Escala tipográfica (la escribe A11yProvider como --font-scale en <html>
+   según la plantilla IA activa). Al escalar la raíz, todo rem escala. */
+html {
+  font-size: calc(16px * var(--font-scale, 1));
+}
+
+/* Contraste alto: textos secundarios y bordes toman el color principal. */
+[data-contrast="high"] {
+  --color-text-muted: var(--color-text);
+  --color-border: var(--color-text);
+}
+
+/* Movimiento reducido global (además de motion-reduce: por componente). */
+[data-reduced-motion="true"] *,
+[data-reduced-motion="true"] *::before,
+[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Densidad del plan (ViewControls en vivo): separaciones. */
+:root,
+[data-density] {
+  --plan-gap: 1rem;
+}
+[data-density="compacto"] {
+  --plan-gap: 0.5rem;
+}
+[data-density="amplio"] {
+  --plan-gap: 1.5rem;
+}
+
+/* Vista "tarjetas": cualquier tabla del plan se apila en filas-bloque
+   sin tocar los componentes (solo CSS). */
+[data-vista="tarjetas"] table thead {
+  display: none;
+}
+[data-vista="tarjetas"] table tbody tr {
+  display: block;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+[data-vista="tarjetas"] table tbody td {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  border: 0;
+}
