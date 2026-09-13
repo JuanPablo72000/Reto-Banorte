@@ -2,7 +2,7 @@
 Catálogo de plantillas de accesibilidad — parte de Guillermo (MCP + modelo de IA).
 
 Por qué existe este módulo:
-  La IA (Groq) NUNCA debe inventar valores de accesibilidad sueltos (un
+  La IA NUNCA debe inventar valores de accesibilidad sueltos (un
   font_scale cualquiera, un color cualquiera). En vez de eso, aquí se
   define un catálogo FIJO de plantillas -> la IA solo elige un id de este
   diccionario (como ya hace con "intent" o "action_id" en schemas.py), y
@@ -12,7 +12,7 @@ Por qué existe este módulo:
 Cómo agregar un caso nuevo (una condición, un tamaño de letra, etc.):
   1. Agrega un valor al enum AccessibilityTemplateId.
   2. Agrega su entrada correspondiente en ACCESSIBILITY_TEMPLATES.
-  Nada más: el JSON Schema de Groq (schemas.py), el normalizador
+  Nada más: el JSON Schema (schemas.py), el normalizador
   (plan_normalizer.py) y el ActionPlan ya generan sus listas/validaciones
   a partir de este archivo, así que no hay que tocarlos.
 

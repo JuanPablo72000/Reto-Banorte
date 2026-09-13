@@ -1,7 +1,7 @@
 """
-Normalizador del ActionPlan crudo devuelto por Groq — parte de Guillermo.
+Normalizador del ActionPlan crudo devuelto por la IA — parte de Guillermo.
 
-Se ejecuta SIEMPRE antes de validar con pydantic (ver ia/groq_client.py).
+Se ejecuta SIEMPRE antes de validar con pydantic (ver ia/ia_client.py).
 No inventa datos nuevos: solo empareja lo que el modelo escribió contra el
 catálogo de valores que YA existen en schemas.py, y corrige errores de
 "ortografía"/formato usando similitud de texto (difflib, stdlib, sin
@@ -28,12 +28,21 @@ import re
 from typing import Optional
 
 from app.schemas import (
+    ACTION_ID_ALIASES,
     CANONICAL_ACTION_IDS,
     CANONICAL_INTENTS,
+    DEFAULT_UI_HINT_BY_TOOL,
     INTENT_ALIASES,
     STEP_ARGUMENT_PLACEHOLDER_DEFAULTS,
     STEP_ARGUMENT_REAL_DEFAULTS,
     SUGGESTED_ACTION_ARGUMENT_FIELDS,
+    TOOL_ALIASES,
+    TOOL_NAMES,
+    BadgeTone,
+    ComponentVariant,
+    IconType,
+    Priority,
+    UIHint,
 )
 from app.ia.accessibility_templates import ACCESSIBILITY_TEMPLATE_IDS, obtener_plantilla
 
@@ -53,6 +62,28 @@ _UMBRAL_SIMILITUD_PLACEHOLDER = 0.6
 # pasan intactos (y de todas formas action_id no está restringido por un
 # enum en pydantic, así que dejarlos tal cual es seguro).
 _UMBRAL_SIMILITUD_ETIQUETA = 0.75
+
+# Umbral para corregir el campo "tool" (steps y suggested_actions) contra
+# TOOL_NAMES. Es deliberadamente ALTO (0.8): una tool equivocada ejecuta el
+# endpoint equivocado (peor que fallar en validación), así que aquí solo
+# entran typos casi idénticos ("get_transaction" -> "get_transactions",
+# ratio 0.97). Todo lo semántico (intents escritos como tool, atajos como
+# "get_card_statements") va por TOOL_ALIASES exacto, porque por similitud
+# pura caería en la tool equivocada ("get_card_statements" es 0.848
+# parecido a "get_statements" y solo 0.844 a "get_credit_card_statements",
+# aunque significa lo segundo).
+_UMBRAL_SIMILITUD_TOOL = 0.8
+
+# Tools que implican movimiento real de dinero (regla 3 del prompt): si
+# algún step las usa, needs_confirmation se fuerza a true aunque el
+# modelo lo haya dejado en false.
+_TOOLS_QUE_REQUIEREN_CONFIRMACION = ("prepare_transfer", "confirm_transfer")
+
+_UI_HINTS = [h.value for h in UIHint]
+_ICONOS = [i.value for i in IconType]
+_VARIANTES = [v.value for v in ComponentVariant]
+_TONOS = [t.value for t in BadgeTone]
+_PRIORIDADES = [p.value for p in Priority]
 
 
 def _parece_intento_de_placeholder(valor) -> bool:
@@ -98,10 +129,74 @@ def normalizar_intent(intent: Optional[str]) -> str:
     return _normalizar_por_catalogo(intent, CANONICAL_INTENTS, _UMBRAL_SIMILITUD_ETIQUETA)
 
 
+def _clave(valor: object) -> str:
+    """Normaliza llaves para comparar: minúsculas, espacios/guiones a
+    guion bajo, sin bordes."""
+    return re.sub(r"[\s\-]+", "_", str(valor).strip().lower())
+
+
 def normalizar_action_id(action_id: Optional[str]) -> Optional[str]:
     if not action_id:
         return action_id
+    clave = _clave(action_id)
+    if clave in ACTION_ID_ALIASES:
+        corregido = ACTION_ID_ALIASES[clave]
+        if corregido != action_id:
+            logger.info("Action_id mapeado por alias: %r -> %r", action_id, corregido)
+        return corregido
     return _normalizar_por_catalogo(action_id, CANONICAL_ACTION_IDS, _UMBRAL_SIMILITUD_ETIQUETA)
+
+
+def normalizar_tool(tool: Optional[str]) -> Optional[str]:
+    """Corrige el campo "tool" contra los métodos reales (TOOL_NAMES).
+
+    Orden: exacto -> TOOL_ALIASES (casos semánticos) -> mayor similitud
+    (>= 0.8, solo typos). Si nada calza, se deja tal cual para que
+    pydantic falle con un error claro en vez de ejecutar otra tool.
+    """
+    if not tool or not str(tool).strip():
+        return tool
+    if tool in TOOL_NAMES:
+        return tool
+    clave = _clave(tool)
+    if clave in TOOL_ALIASES:
+        corregido = TOOL_ALIASES[clave]
+        logger.info("Tool mapeada por alias: %r -> %r", tool, corregido)
+        return corregido
+    nombre_limpio = _clave(tool)
+    exactos = [t for t in TOOL_NAMES if _clave(t) == nombre_limpio]
+    if exactos:
+        return exactos[0]
+    return _normalizar_por_catalogo(tool, TOOL_NAMES, _UMBRAL_SIMILITUD_TOOL)
+
+
+def normalizar_ui_hint(ui_hint: Optional[str], tool: Optional[str] = None) -> Optional[str]:
+    """Corrige "ui_hint" contra UIHint. Si no hay parecido razonable pero
+    la tool sí es conocida, cae al ui_hint por defecto de esa tool
+    (DEFAULT_UI_HINT_BY_TOOL) en vez de dejar un valor inválido."""
+    if ui_hint in _UI_HINTS:
+        return ui_hint
+    if isinstance(ui_hint, str) and ui_hint.strip():
+        corregido = _normalizar_por_catalogo(ui_hint, _UI_HINTS, _UMBRAL_SIMILITUD_ETIQUETA)
+        if corregido in _UI_HINTS and corregido != ui_hint:
+            return corregido
+    if tool in DEFAULT_UI_HINT_BY_TOOL:
+        por_defecto = DEFAULT_UI_HINT_BY_TOOL[tool]
+        logger.info(
+            "ui_hint inválido %r para tool %r, usando default %r", ui_hint, tool, por_defecto
+        )
+        return por_defecto
+    return ui_hint
+
+
+def normalizar_enum_visual(valor: Optional[str], catalogo: list[str], campo: str) -> Optional[str]:
+    """Corrige icon/variant/tone/priority contra su enum. Sin default por
+    tool aquí: si no hay parecido, se deja tal cual (pydantic decide)."""
+    if valor in catalogo:
+        return valor
+    if isinstance(valor, str) and valor.strip():
+        return _normalizar_por_catalogo(valor, catalogo, _UMBRAL_SIMILITUD_ETIQUETA)
+    return valor
 
 
 def normalizar_accessibility_template(template_id: Optional[str]) -> str:
@@ -119,7 +214,7 @@ def _aplicar_valores_fijos_de_plantilla(accessibility: dict, template_id: str) -
     """Pisa SOLO los campos de senior_adaptations/visual_impairment_adaptations
     que también existen en el catálogo fijo (accessibility_templates.py),
     copiando el valor literal de la plantilla — nunca el que haya puesto el
-    modelo (Groq o Gemini). El resto de campos que exige el schema
+    modelo (DeepSeek o Gemini). El resto de campos que exige el schema
     (row_height, show_icons, show_balance_prominent, field_labels,
     audio_description, audio_confirmation) NO está en el catálogo: son
     contextuales a cada paso (ej. "show_balance_prominent" solo tiene
@@ -210,7 +305,7 @@ def _normalizar_suggested_action_arguments(arguments: dict) -> dict:
 
 def normalizar_plan(data: dict) -> dict:
     """Punto de entrada: recibe el dict crudo (ya parseado de JSON) que
-    devolvió Groq y regresa una copia con placeholders/intent/action_id
+    devolvió la IA y regresa una copia con placeholders/intent/action_id
     autocorregidos contra el catálogo de schemas.py. No muta 'data'."""
     if not isinstance(data, dict):
         return data
@@ -227,8 +322,24 @@ def normalizar_plan(data: dict) -> dict:
         for step in steps:
             if isinstance(step, dict):
                 step = dict(step)
+                step["tool"] = normalizar_tool(step.get("tool"))
+                step["ui_hint"] = normalizar_ui_hint(step.get("ui_hint"), step.get("tool"))
                 if isinstance(step.get("arguments"), dict):
                     step["arguments"] = _normalizar_step_arguments(step["arguments"])
+                if isinstance(step.get("visual"), dict):
+                    visual = dict(step["visual"])
+                    visual["icon"] = normalizar_enum_visual(visual.get("icon"), _ICONOS, "icon")
+                    visual["variant"] = normalizar_enum_visual(visual.get("variant"), _VARIANTES, "variant")
+                    visual["tone"] = normalizar_enum_visual(visual.get("tone"), _TONOS, "tone")
+                    # El default del schema es "none" y la IA casi nunca
+                    # elige una animación explícita: sin esto, en la
+                    # práctica ningún step se anima nunca. El CSS ya
+                    # respeta prefers-reduced-motion / data-reduced-motion,
+                    # así que forzar "fade" aquí es seguro incluso para
+                    # perfiles con movimiento reducido.
+                    if not visual.get("animation") or visual.get("animation") == "none":
+                        visual["animation"] = "fade"
+                    step["visual"] = visual
                 if isinstance(step.get("accessibility"), dict):
                     step["accessibility"] = _aplicar_valores_fijos_de_plantilla(
                         step["accessibility"], normalizado["accessibility_template"]
@@ -236,16 +347,40 @@ def normalizar_plan(data: dict) -> dict:
             nuevos_steps.append(step)
         normalizado["steps"] = nuevos_steps
 
+        # Regla 3 del prompt: cualquier prepare/confirm_transfer exige
+        # confirmación, aunque el modelo haya puesto false.
+        tools_usadas = {
+            s.get("tool") for s in nuevos_steps if isinstance(s, dict)
+        }
+        if tools_usadas & set(_TOOLS_QUE_REQUIEREN_CONFIRMACION):
+            if normalizado.get("needs_confirmation") is not True:
+                logger.info("needs_confirmation forzado a true por step de transferencia")
+            normalizado["needs_confirmation"] = True
+
     suggested_actions = normalizado.get("suggested_actions")
     if isinstance(suggested_actions, list):
         nuevas_acciones = []
-        for accion in suggested_actions:
-            if isinstance(accion, dict):
-                accion = dict(accion)
-                accion["action_id"] = normalizar_action_id(accion.get("action_id"))
-                if isinstance(accion.get("arguments"), dict):
-                    accion["arguments"] = _normalizar_suggested_action_arguments(accion["arguments"])
+        for accion in sugeridas(suggested_actions):
             nuevas_acciones.append(accion)
         normalizado["suggested_actions"] = nuevas_acciones
 
     return normalizado
+
+
+def sugeridas(suggested_actions: list) -> list:
+    """Normaliza suggested_actions: action_id (alias + similitud), tool e
+    ui_hint (igual que en steps), icon/variant/priority, argumentos a null."""
+    nuevas_acciones = []
+    for accion in suggested_actions:
+        if isinstance(accion, dict):
+            accion = dict(accion)
+            accion["action_id"] = normalizar_action_id(accion.get("action_id"))
+            accion["tool"] = normalizar_tool(accion.get("tool"))
+            accion["ui_hint"] = normalizar_ui_hint(accion.get("ui_hint"), accion.get("tool"))
+            accion["icon"] = normalizar_enum_visual(accion.get("icon"), _ICONOS, "icon")
+            accion["variant"] = normalizar_enum_visual(accion.get("variant"), _VARIANTES, "variant")
+            accion["priority"] = normalizar_enum_visual(accion.get("priority"), _PRIORIDADES, "priority")
+            if isinstance(accion.get("arguments"), dict):
+                accion["arguments"] = _normalizar_suggested_action_arguments(accion["arguments"])
+        nuevas_acciones.append(accion)
+    return nuevas_acciones

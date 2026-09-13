@@ -1,5 +1,4 @@
 fastmcp
-groq
 google-genai
 pydantic
 python-dotenv
