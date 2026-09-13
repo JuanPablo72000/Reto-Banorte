@@ -293,13 +293,27 @@ REGLAS DE ACCESIBILIDAD BANORTE (OBLIGATORIO):
      campos: id_user, id_account, id_origin_account, query, limit (nada más).
      Los IDs y limit son integer o null; query es string o null.
 
-5. METADATA VISUAL (obligatoria en cada paso):
-   - "visual.icon": elige de [account, transaction, transfer, balance, search, help, warning, success, info, settings]
+5. METADATA VISUAL (obligatoria en cada paso, VARÍALA — nunca repitas el mismo icon/variant/tone/animation en todos los pasos de una respuesta si el contenido es distinto):
+   - "visual.icon": elige el MÁS ESPECÍFICO según la tool del paso (no un genérico por defecto):
+     * get_user_context -> account | get_accounts/get_account_summary/get_account_detail -> account
+     * get_transactions/get_all_transactions -> transaction | get_daily_balance -> balance
+     * prepare_transfer/confirm_transfer/get_transfers/get_transfer_detail -> transfer
+     * get_reconciliation_status -> search | get_statements/get_statement_detail -> statement
+     * get_expense_categories -> category | get_budgets_monthly -> budget
+     * get_savings_goals -> goal | get_credit_cards/get_credit_card_statements -> card
+     * search_memory_context -> search
+     Catálogo COMPLETO (nunca uses uno fuera de esta lista):
+     [account, transaction, transfer, balance, search, help, warning, success, info, settings, statement, budget, goal, card, category]
    - "visual.variant": EXACTO al prop `variant` de Button/IconButton del frontend: [primary, secondary, ghost, danger]
      (primary = la acción principal del paso; secondary/ghost = acciones secundarias; danger SOLO para eliminar/confirmar algo irreversible)
-   - "visual.tone": EXACTO al tono de Badge/Tag del frontend: [success, warning, danger, info, neutral] o null si el elemento no es un badge/tag
-   - "visual.emphasis": "normal", "highlighted", "subtle"
-   - "visual.animation": "none", "fade", "slide", "pulse"
+   - "visual.tone": EXACTO al tono de Badge/Tag del frontend: [success, warning, danger, info, neutral] o null si el elemento no es un badge/tag.
+     Úsalo con sentido: success si el dato es positivo/completado (saldo a favor, transferencia confirmada), warning si hay algo que atender (presupuesto cerca del límite, pendiente de confirmación), danger si hay un problema/rechazo, info para datos neutros informativos.
+   - "visual.emphasis": "highlighted" para el dato más importante de la respuesta (ej. el saldo total, el monto de una transferencia), "subtle" para datos secundarios/contextuales, "normal" para el resto. NO pongas "normal" en todo.
+   - "visual.animation": elige SIEMPRE algo distinto de "none" salvo que el usuario tenga movimiento reducido activo (accessibility_template lo indica). Regla práctica:
+     * "fade": el default para la mayoría de los pasos informativos (cuentas, transacciones, saldos, listados).
+     * "slide": para confirmaciones, alertas, pasos que requieren atención inmediata del usuario (prepare_transfer/confirm_transfer, pendientes, errores).
+     * "pulse": SOLO para lo más urgente/destacado de la respuesta (ej. una alerta crítica o el paso con priority=high).
+     * "none": únicamente si el usuario pidió explícitamente movimiento reducido.
    NUNCA mandes un color hex, una clase de Tailwind ni un tamaño en "visual":
    el tamaño (sm/md/lg) SIEMPRE lo decide la plantilla de accesibilidad
    (punto 13 más abajo), nunca tú por elemento.
@@ -336,7 +350,7 @@ REGLAS DE ACCESIBILIDAD BANORTE (OBLIGATORIO):
    - description: qué hace
    - tool: qué tool invocar
    - reason: por qué lo sugerimos
-   - icon: icono sugerido
+   - icon: el más específico según la tool que invoca (misma lista completa del punto 5: [account, transaction, transfer, balance, search, help, warning, success, info, settings, statement, budget, goal, card, category]). NUNCA uses "info" por default si hay un ícono más específico disponible.
    - variant: [primary, secondary, ghost, danger] — primary SOLO en la sugerencia más relevante (como máximo una por respuesta), danger SOLO si es destructiva, el resto secondary o ghost
    - priority: "high", "medium", "low"
 

@@ -358,6 +358,12 @@ class Transaction(ApiModel):
     amount: float
     direction: Literal["credit", "debit"]
     category: str
+    # FK real hacia ExpenseCategory (TransactionResponse.IdExpenseCategory
+    # en el backend .NET). Es la clasificación verdadera: el texto libre
+    # "category" NO calza con ExpenseCategory.code (ej. "super" vs
+    # "supermarket"), así que la agregación de gasto por categoría debe
+    # usar este campo, no "category".
+    id_expense_category: Optional[int] = None
     description: str
     status: Literal["posted", "pending", "reversed"] = "posted"
     reference: Optional[str] = None
@@ -523,6 +529,12 @@ class ExpenseCategory(ApiModel):
     icon: Optional[str] = None
     is_default: bool = False
     sort_order: int = 0
+    # Agregados por tools.get_expense_categories (no vienen del catálogo
+    # crudo): monto gastado y número de movimientos débito de esta
+    # categoría en el periodo consultado. Sin esto, el frontend solo podía
+    # mostrar nombres sin montos ("gastos por categoría" vacío).
+    total_amount: float = Field(default=0.0, description="Suma de montos débito de esta categoría")
+    transaction_count: int = Field(default=0, description="Número de movimientos débito de esta categoría")
     x_placeholder: bool = Field(default=False)
     x_position: PositionMetadata = Field(
         default_factory=lambda: PositionMetadata(

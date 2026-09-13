@@ -41,7 +41,13 @@ export function ChatWindow() {
 
     function handleSugerencia(a: SuggestedAction) {
         if (cargando) return;
-        void enviar(a.label);
+        // Se manda el tool/arguments exactos junto con el texto, para que
+        // el botón funcione siempre (ver accion_directa en orquestador.py)
+        // y no dependa de que la IA adivine bien el texto del botón.
+        void enviar(a.label, {
+            ...CONTEXTO_BASE,
+            accion_directa: { tool: a.tool, arguments: a.arguments, label: a.label },
+        });
     }
 
     function handleConfirmar() {

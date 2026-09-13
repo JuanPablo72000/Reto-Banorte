@@ -331,6 +331,14 @@ def normalizar_plan(data: dict) -> dict:
                     visual["icon"] = normalizar_enum_visual(visual.get("icon"), _ICONOS, "icon")
                     visual["variant"] = normalizar_enum_visual(visual.get("variant"), _VARIANTES, "variant")
                     visual["tone"] = normalizar_enum_visual(visual.get("tone"), _TONOS, "tone")
+                    # El default del schema es "none" y la IA casi nunca
+                    # elige una animación explícita: sin esto, en la
+                    # práctica ningún step se anima nunca. El CSS ya
+                    # respeta prefers-reduced-motion / data-reduced-motion,
+                    # así que forzar "fade" aquí es seguro incluso para
+                    # perfiles con movimiento reducido.
+                    if not visual.get("animation") or visual.get("animation") == "none":
+                        visual["animation"] = "fade"
                     step["visual"] = visual
                 if isinstance(step.get("accessibility"), dict):
                     step["accessibility"] = _aplicar_valores_fijos_de_plantilla(

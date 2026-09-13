@@ -256,10 +256,15 @@ async def get_statement_detail(id_account: int, id_statement: int) -> StatementD
 
 
 @mcp.tool()
-async def get_expense_categories(search: Optional[str] = None) -> list[ExpenseCategory]:
-    """Devuelve el catálogo de categorías de gasto, opcionalmente
-    filtrado por texto. Equivale a GET /expense-categories."""
-    return await tools.get_expense_categories(search)
+async def get_expense_categories(
+    search: Optional[str] = None, id_account: Optional[int] = None
+) -> list[ExpenseCategory]:
+    """Devuelve las categorías de gasto CON el monto y el número de
+    movimientos débito de cada una (total_amount, transaction_count).
+    Úsala para "en qué gasté mi dinero", "gastos por categoría" o
+    cualquier desglose de gasto. Equivale a GET /expense-categories +
+    agregación de GET /accounts/{accountId}/transactions."""
+    return await tools.get_expense_categories(search, id_account)
 
 
 @mcp.tool()

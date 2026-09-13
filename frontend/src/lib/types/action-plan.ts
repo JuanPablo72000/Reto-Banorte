@@ -134,4 +134,13 @@ export interface ChatContext {
     id_account?: number;
     confirmado?: boolean;
     token?: string;
+    // Botón de SuggestionBar clickeado: tool/arguments ya calculados por
+    // el backend, para que el paso se ejecute garantizado (ver
+    // orquestador.ejecutar_turno) y no dependa de que la IA reinterprete
+    // el texto del botón.
+    accion_directa?: {
+        tool: ToolName;
+        arguments: Record<string, unknown>;
+        label?: string;
+    };
 }

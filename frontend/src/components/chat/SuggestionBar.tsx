@@ -40,7 +40,14 @@ export function SuggestionBar({
 
     return (
         <section aria-label={etiqueta} {...attrs}>
-            <div className="overflow-x-auto pb-2 snap-x snap-mandatory lg:overflow-visible">
+            <div
+                className="relative -mx-1 overflow-x-auto px-1 pb-2 snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:overflow-visible"
+                style={{
+                    maskImage: "linear-gradient(to right, transparent, black 12px, black calc(100% - 24px), transparent)",
+                    WebkitMaskImage:
+                        "linear-gradient(to right, transparent, black 12px, black calc(100% - 24px), transparent)",
+                }}
+            >
                 <MovableZone
                     items={normalizadas.map((s) => ({ ...s, id: s.action_id }))}
                     storageKey={storageKey}

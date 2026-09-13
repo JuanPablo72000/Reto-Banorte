@@ -30,6 +30,13 @@ from typing import Optional
 
 from app import tools
 from app.ia.planner_con_memoria import PlannerConMemoria
+from app.schemas.schemas import (
+    DEFAULT_UI_HINT_BY_TOOL,
+    AccessibilityMetadata,
+    PlannedStep,
+    StepArguments,
+    VisualMetadata,
+)
 
 logger = logging.getLogger("mcp_ia.orquestador")
 
@@ -123,6 +130,37 @@ async def ejecutar_turno(
     plan = await planner.plan(id_user=id_user, user_message=mensaje, contexto=contexto)
     crudo = planner.planner.last_raw
     correcciones = calcular_diff(crudo, plan)
+
+    # Botón de sugerencia (SuggestionBar) clickeado: el frontend manda el
+    # tool/arguments EXACTOS que ya calculó el turno anterior en
+    # contexto["accion_directa"]. Si la IA no lo re-generó igual (o generó
+    # un paso vacío/distinto), lo agregamos aquí para que el botón SIEMPRE
+    # produzca el resultado prometido, sin depender de que el modelo
+    # reinterprete correctamente el texto del botón.
+    accion_directa = contexto.get("accion_directa")
+    if isinstance(accion_directa, dict) and accion_directa.get("tool"):
+        tool_forzada = accion_directa["tool"]
+        if not any(s.tool == tool_forzada for s in plan.steps):
+            try:
+                plan.steps.append(
+                    PlannedStep(
+                        step_id=f"accion_directa_{tool_forzada}",
+                        tool=tool_forzada,
+                        ui_hint=DEFAULT_UI_HINT_BY_TOOL.get(tool_forzada, "table"),
+                        arguments=StepArguments(**(accion_directa.get("arguments") or {})),
+                        reason="Ejecución directa de un botón de sugerencia.",
+                        visual=VisualMetadata(),
+                        accessibility=AccessibilityMetadata(
+                            aria_label=f"Resultado de {tool_forzada}",
+                            screen_reader_text=f"Resultado de la acción {tool_forzada}",
+                        ),
+                        messages={
+                            "default": accion_directa.get("label") or "Aquí tienes lo que pediste."
+                        },
+                    )
+                )
+            except Exception:
+                logger.exception("No se pudo forzar accion_directa=%s", tool_forzada)
 
     salidas = []
     for step in plan.steps:

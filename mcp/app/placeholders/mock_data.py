@@ -543,13 +543,30 @@ def mock_get_statement_detail(id_account: int, id_statement: int) -> Optional[St
 
 
 def mock_get_expense_categories(search: Optional[str] = None) -> list[ExpenseCategory]:
-    """Placeholder de GET /expense-categories. Cain reemplazará el cuerpo
-    por un método nuevo de `BancaApiClient` que llame a ese endpoint."""
-    items = list(_EXPENSE_CATEGORIES)
+    """Placeholder de GET /expense-categories, ENRIQUECIDO con el gasto real
+    (suma y conteo de movimientos débito) de cada categoría, agregado desde
+    _TRANSACTIONS. Sin esto el catálogo solo traía nombres y el frontend no
+    tenía montos que graficar ("gastos por categoría" salía vacío)."""
+    gasto_por_codigo: dict[str, tuple[float, int]] = {}
+    for t in _TRANSACTIONS:
+        if t.direction != "debit":
+            continue
+        monto, conteo = gasto_por_codigo.get(t.category, (0.0, 0))
+        gasto_por_codigo[t.category] = (monto + t.amount, conteo + 1)
+
+    items = [
+        c.model_copy(
+            update={
+                "total_amount": gasto_por_codigo.get(c.code, (0.0, 0))[0],
+                "transaction_count": gasto_por_codigo.get(c.code, (0.0, 0))[1],
+            }
+        )
+        for c in _EXPENSE_CATEGORIES
+    ]
     if search:
         texto = search.lower()
         items = [c for c in items if texto in c.name.lower() or texto in c.code.lower()]
-    return items
+    return sorted(items, key=lambda c: c.total_amount, reverse=True)
 
 
 def mock_get_budgets_monthly(
