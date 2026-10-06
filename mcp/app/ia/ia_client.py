@@ -49,7 +49,7 @@ logger = logging.getLogger("mcp_ia.ia_client")
 # ---------------------------------------------------------------------------
 # DeepSeek (primario, API compatible OpenAI). Sin GEMINI/DEEPSEEK keys el
 # planner no puede funcionar: falla en plan() con error claro.
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "").strip()
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
 DEEPSEEK_MODELS: list[str] = [
     m.strip()
@@ -60,7 +60,7 @@ DEEPSEEK_MODELS: list[str] = [
 # Gemini es un PROVEEDOR DISTINTO con cupo propio — secundario (fallback)
 # cuando DeepSeek se queda sin cupo o falla. Si no hay GEMINI_API_KEY en
 # el .env, este tier queda vacío (no rompe nada para quien no lo configure).
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODELS: list[str] = (
     [m.strip() for m in os.getenv("GEMINI_MODELS", "gemini-2.5-flash").split(",") if m.strip()]
     if GEMINI_API_KEY
@@ -126,11 +126,24 @@ RETRY_BASE_DELAY_SECONDS = 2.0
 MAX_COMPLETION_TOKENS = int(os.getenv("IA_MAX_COMPLETION_TOKENS", "8192"))
 
 
-def _construir_orden_modelos() -> list[str]:
+def _construir_orden_modelos(
+    incluir_deepseek: bool = True,
+    incluir_gemini: bool = True,
+) -> list[str]:
     """Arma la lista de modelos a intentar: primero TODOS los de DeepSeek
-    (primario) y luego los de Gemini (secundario), sin repetir modelos."""
+    (primario) y luego los de Gemini (secundario), sin repetir modelos.
+
+    Los proveedores sin credenciales se excluyen para no construir
+    encabezados Authorization vacíos ni hacer llamadas que no pueden
+    autenticarse.
+    """
     modelos: list[str] = []
-    for tier in ("deepseek", "gemini"):
+    tiers: list[str] = []
+    if incluir_deepseek:
+        tiers.append("deepseek")
+    if incluir_gemini:
+        tiers.append("gemini")
+    for tier in tiers:
         for modelo in MODEL_POOLS.get(tier, []):
             if modelo not in modelos:
                 modelos.append(modelo)
@@ -805,6 +818,8 @@ class PlannerIA:
         JSON. Deja que el caller (self.plan) capture los errores: relanza
         tal cual para que el except de más abajo decida si es cupo agotado
         (429 -> siguiente modelo) o fatal (401/402/4xx -> abortar)."""
+        if not self._deepseek_key:
+            raise _ErrorFatalIA("DEEPSEEK_API_KEY no configurada")
         async with httpx.AsyncClient(base_url=DEEPSEEK_BASE_URL, timeout=120.0) as client:
             resp = await client.post(
                 "/chat/completions",
@@ -834,6 +849,8 @@ class PlannerIA:
         ActionPlan), pero con el SDK de Gemini. Deja que el caller
         (self.plan) capture los errores: relanza tal cual para que el
         except de más abajo decida si es cupo agotado o fatal."""
+        if _gemini_client is None:
+            raise _ErrorFatalIA("GEMINI_API_KEY no configurada")
         response = await _gemini_client.aio.models.generate_content(
             model=modelo,
             contents=mensaje_usuario,
@@ -870,7 +887,10 @@ class PlannerIA:
         if self._modelo_forzado:
             modelos_a_intentar = [self._modelo_forzado]
         else:
-            modelos_a_intentar = _construir_orden_modelos()
+            modelos_a_intentar = _construir_orden_modelos(
+                incluir_deepseek=bool(self._deepseek_key),
+                incluir_gemini=_gemini_client is not None,
+            )
             logger.info("Orden de modelos: %s", modelos_a_intentar)
         if not modelos_a_intentar:
             raise RuntimeError(

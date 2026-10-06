@@ -13,6 +13,8 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
 FROM base AS builder
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 COPY --from=deps /srv/app/node_modules ./node_modules
 COPY frontend/ ./
 COPY mcp/ ./mcp-server/

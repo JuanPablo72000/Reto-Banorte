@@ -3241,23 +3241,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Ponci\\.nuget\\packages\\": {},
+    "C:\\Users\\corte\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Ponci\\Documents\\GitHub\\Reto-Banorte\\backend\\src\\BancaAdaptativa.Api\\BancaAdaptativa.Api.csproj",
+      "projectUniqueName": "C:\\Users\\corte\\Downloads\\repo\\Reto-Banorte\\backend\\src\\BancaAdaptativa.Api\\BancaAdaptativa.Api.csproj",
       "projectName": "BancaAdaptativa.Api",
-      "projectPath": "C:\\Users\\Ponci\\Documents\\GitHub\\Reto-Banorte\\backend\\src\\BancaAdaptativa.Api\\BancaAdaptativa.Api.csproj",
-      "packagesPath": "C:\\Users\\Ponci\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Ponci\\Documents\\GitHub\\Reto-Banorte\\backend\\src\\BancaAdaptativa.Api\\obj\\",
+      "projectPath": "C:\\Users\\corte\\Downloads\\repo\\Reto-Banorte\\backend\\src\\BancaAdaptativa.Api\\BancaAdaptativa.Api.csproj",
+      "packagesPath": "C:\\Users\\corte\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\corte\\Downloads\\repo\\Reto-Banorte\\backend\\src\\BancaAdaptativa.Api\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\Ponci\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\corte\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -3266,6 +3266,7 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -3334,7 +3335,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Users\\Ponci\\.dotnet10\\sdk\\10.0.401/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.AspNetCore": "(,10.0.32767]",
           "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",

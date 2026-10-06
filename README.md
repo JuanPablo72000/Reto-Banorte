@@ -1,75 +1,182 @@
 # Banca Personal Adaptativa
 
-**Habla con tu banco en lenguaje natural y la interfaz se construye sola, adaptada a ti.**
+Banca Personal Adaptativa es una aplicación bancaria de demostración que permite consultar información financiera mediante una interfaz web y un asistente en lenguaje natural. El asistente puede mostrar saldos, movimientos, presupuestos, tarjetas y metas de ahorro como texto, tablas y gráficas.
 
-Escribe *"¿cuánto gasté en restaurantes este mes?"* y obtienes la respuesta en texto claro **más** tablas, tarjetas y gráficas generadas al momento. Si necesitas letra grande, alto contraste o una paleta para daltonismo, la app lo detecta o lo ajustas con dos clics — y lo recuerda.
+El proyecto incluye:
 
----
+- Un frontend en Next.js 16.
+- Una API REST en .NET 10 con autenticación JWT y SQLite.
+- Un servidor MCP en Python que conecta la aplicación con DeepSeek o Gemini.
+- Datos demo creados automáticamente al iniciar la API.
 
-## Lo que puedes hacer
+## Inicio rápido con Docker Compose
 
-### Asistente con IA (chat)
-- Pregunta en español normal: saldos, movimientos, presupuestos, tarjetas, metas de ahorro, estados de cuenta, transferencias.
-- Cada respuesta trae **texto + interfaz generada** (tablas, tarjetas, gráficas) que se anima al acomodarse.
-- **Gráficas automáticas y ordenadas**: evolución del saldo, gastos por categoría, ingresos vs gastos, presupuesto vs gasto, progreso de metas, crédito usado vs disponible. Puedes pedir rangos de fechas (*"del 1 al 10 de septiembre"*).
-- Botones de sugerencia para seguir explorando sin escribir.
-- Las operaciones sensibles (transferencias) **siempre piden tu confirmación** antes de ejecutarse.
+### Requisitos
 
-### Banca completa (menú)
-Inicio · Cuentas · Saldos · Movimientos · Transferencias · Estados de cuenta · Tarjetas · Presupuestos y metas · Conciliación · Configuración. Funciona en celular y computadora, con modo demo aunque el servidor esté apagado.
+- Docker Desktop o Docker Engine con Docker Compose.
+- Una clave de DeepSeek o Gemini para usar el chat con IA.
 
-### Accesibilidad real (no un interruptor decorativo)
-- Panel oculto (botón universal o `Alt+A`): tamaño de letra, paleta **normal / daltónica / monocromática oscura**, tema claro/oscuro, alto contraste, movimiento reducido.
-- **Plantillas IA**: adulto mayor, baja visión, daltonismos, movilidad o cognición reducida, lectura simplificada — la IA las aplica sola cuando detecta la necesidad.
-- **Borra la memoria del asistente** cuando quieras, desde el mismo panel.
+### Configuración
 
-## Cómo funciona (en 5 pasos)
+1. Crea el archivo de variables de entorno desde el ejemplo:
 
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+   En macOS o Linux:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edita `.env`:
+
+   - Cambia `JWT_KEY` por un secreto de al menos 32 caracteres.
+   - Define `DEEPSEEK_API_KEY` o `GEMINI_API_KEY`. No es necesario configurar ambas.
+   - Conserva las URLs locales si ejecutarás toda la aplicación con Docker Compose.
+
+3. Construye las imágenes e inicia los servicios:
+
+   ```bash
+   docker compose up --build -d
+   ```
+
+4. Comprueba el estado:
+
+   ```bash
+   docker compose ps
+   docker compose logs -f
+   ```
+
+5. Abre `http://localhost:3000` e inicia sesión con:
+
+   ```text
+   Usuario: demo@banorte.mx
+   Contraseña: Demo123!
+   ```
+
+### Servicios disponibles
+
+| Servicio | URL | Descripción |
+|---|---|---|
+| Frontend | `http://localhost:3000` | Aplicación web y chat |
+| API | `http://localhost:8000` | API REST; salud en `/health` y Swagger en `/swagger` |
+| MCP | `http://localhost:8080` | Servidor de herramientas e IA |
+
+### Comandos útiles
+
+```bash
+# Detener los contenedores sin borrar la base de datos
+docker compose down
+
+# Reconstruir después de cambiar código o variables
+docker compose up --build --force-recreate -d
+
+# Ver los logs de un servicio
+docker compose logs -f api
+docker compose logs -f frontend
+docker compose logs -f mcp
+
+# Borrar los contenedores y la base SQLite para regenerar los datos demo
+docker compose down -v
 ```
-Tú escribes ──▶ IA planea ──▶ Se ejecutan ──▶ Se grafican ──▶ Ves la
-"ver mis       qué datos      los datos       los datos       interfaz
- metas"        necesita       reales          ordenados       generada
+
+Para iniciar solamente un componente con sus dependencias, indica su nombre:
+
+```bash
+docker compose up --build api
+docker compose up --build mcp
+docker compose up --build frontend
 ```
 
-1. **Frontend** (Next.js) recibe tu mensaje y lo envía al puente.
-2. **MCP + IA** interpreta la intención, recuerda tus ajustes y arma un plan.
-3. El plan consulta el **backend** (.NET + SQLite) o datos demo si no hay servidor.
-4. Los números se convierten en **gráficas deterministas** (siempre correctas y ordenadas).
-5. El frontend renderiza texto + tablas + gráficas con tu plantilla de accesibilidad.
-
-## Pruébalo en 3 pasos
+También puedes usar el lanzador de Windows, que inicia todo y comprueba que los servicios respondan:
 
 ```powershell
-# 1. Levanta todo (construye imágenes, crea la BD demo y verifica salud)
-powershell -ExecutionPolicy Bypass -File scripts/demo.ps1 -Reiniciar
-
-# 2. Abre http://localhost:3000
-# 3. Entra con:  demo@banorte.mx / Demo123!   (o usa el modo demo)
+powershell -ExecutionPolicy Bypass -File scripts/demo.ps1
 ```
 
-| Servicio | Dónde | Tecnología |
-|---|---|---|
-| App bancaria | `http://localhost:3000` | Next.js 16 + Tailwind 4 + recharts |
-| API de datos | `http://localhost:8000` | .NET 10 Minimal API + SQLite (JWT) |
-| Cerebro IA | `http://localhost:8080` | Python + FastMCP + Groq/Gemini |
+## Ejecutar servicios en local
 
-## Datos demo incluidos
+Docker Compose es la forma recomendada porque configura la red y las dependencias automáticamente. Para desarrollo, cada servicio también puede ejecutarse por separado.
 
-El usuario `demo@banorte.mx` llega con vida financiera completa y coherente: **4 cuentas** ($164,678.54 MXN en total), **~300 movimientos** de 90 días, **3 tarjetas de crédito**, **5 metas de ahorro**, **6 presupuestos** del mes, **10 transferencias** (6 confirmadas, 3 pendientes por confirmar, 1 rechazada), conciliación y estados de cuenta. Todo sirve para simular operaciones reales sin errores.
+### API .NET
 
-> Los datos se generan solos al arrancar. Para empezar de cero: `docker compose down -v` (docker) o borra `backend/data/app.db` (local).
+Requiere .NET SDK 10. Desde la raíz del repositorio:
 
-## Documentación
+```powershell
+$env:JWT_KEY="secreto-local-de-al-menos-32-caracteres"
+dotnet run --project backend/src/BancaAdaptativa.Api --launch-profile http
+```
 
-- [`frontend/README.md`](frontend/README.md) — guía del frontend: rutas, chat, diseño y accesibilidad.
-- [`backend/README.md`](backend/README.md) — guía del backend: endpoints, auth, seed y pruebas.
-- [`mcp/README.md`](mcp/README.md) — guía del cerebro IA: tools, orquestador, gráficas y memoria.
-- [`docs/frontend/`](docs/frontend/) — puente MCP↔frontend y cómo crear elementos de UI.
-- [`docs/datos/`](docs/datos/) — modelo de datos y casos de uso.
-- [`docs/accesibilidad/wcag22-aa.md`](docs/accesibilidad/wcag22-aa.md) — checklist WCAG 2.2 AA.
+La API quedará en `http://localhost:5178`. Las migraciones y los datos demo se aplican automáticamente.
 
-## Notas técnicas
+### Servidor MCP
 
-- Local: API en `http://localhost:5178` (`dotnet run`), frontend con `npm run dev`. Requiere **.NET SDK 10**, **Node 22** y claves de IA en `.env` (`GROQ_API_KEY` o `GEMINI_API_KEY`).
-- El login real exige `JWT_KEY` configurado (mín. 32 caracteres); sin backend, la app entra en **modo demo** automáticamente.
-- Proyecto académico — Reto Banorte.
+Requiere Python 3.12 o superior. Copia `mcp/.env.example` como `mcp/.env`, agrega una clave de IA y usa `BANORTE_API_BASE_URL=http://localhost:5178` si la API también corre localmente.
+
+```powershell
+cd mcp
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python -m app.server.mcp_server --http
+```
+
+En macOS o Linux, activa el entorno con `source .venv/bin/activate`.
+
+### Frontend Next.js
+
+Requiere Node.js 22 y el entorno de Python del MCP. Crea `frontend/.env.local` con:
+
+```dotenv
+NEXT_PUBLIC_API_URL=http://localhost:5178
+BANORTE_API_BASE_URL=http://localhost:5178
+DEEPSEEK_API_KEY=
+GEMINI_API_KEY=
+```
+
+Define una de las claves de IA y luego ejecuta:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+El frontend estará disponible en `http://localhost:3000`. Su ruta de chat inicia el puente MCP desde la carpeta `mcp`, por lo que las dependencias de Python deben estar instaladas y el comando `python` debe estar disponible.
+
+## Variables principales
+
+| Variable | Uso |
+|---|---|
+| `JWT_KEY` | Firma de tokens del backend; mínimo 32 caracteres |
+| `NEXT_PUBLIC_API_URL` | URL de la API accesible desde el navegador |
+| `BANORTE_API_BASE_URL` | URL de la API usada por el MCP |
+| `DEEPSEEK_API_KEY` | Clave opcional del proveedor principal |
+| `GEMINI_API_KEY` | Clave opcional del proveedor alternativo |
+| `BANORTE_API_MODE` | `auto`, `api` o `mock` |
+
+Las URLs deben incluir el protocolo. Por ejemplo: `https://api-production-4662.up.railway.app`.
+
+## Estructura del repositorio
+
+```text
+backend/     API .NET, SQLite, migraciones y pruebas
+frontend/    Aplicación Next.js
+mcp/         Servidor MCP, orquestador y clientes de IA
+contracts/   Contrato A2UI
+docs/        Documentación técnica adicional
+scripts/     Scripts de arranque y verificación
+```
+
+Para información específica de cada componente consulta [backend/README.md](backend/README.md), [frontend/README.md](frontend/README.md) y [mcp/README.md](mcp/README.md).
+
+## Consideraciones de seguridad
+
+- No confirmes `.env` ni claves reales en Git.
+- Usa un `JWT_KEY` distinto y aleatorio en cada entorno desplegado.
+- Las credenciales demo son solamente para desarrollo y demostraciones.
+- Usa HTTPS para cualquier API publicada.
+
+Proyecto académico para Reto Banorte.
